@@ -2,9 +2,9 @@
 
 [한국어 README](README.md)
 
-## WebView2-based v2 prototype
+## WebView2 native preview
 
-See [native-webview2/README-native.md](native-webview2/README-native.md) for the small native prototype that uses the Windows WebView2 Runtime without bundling Python, Playwright, or Chromium. It is not yet an official Release; the existing v1 Full/Lite download instructions remain authoritative below.
+A separate **WebView2 native preview** is available without bundling Python, Playwright, or Chromium. Its manually generated GitHub Actions artifact is approximately 0.3 MiB; see [native-webview2/README-native.md](native-webview2/README-native.md) for execution, security, and limitation details. It is not yet the default replacement for v1 or an official Release, so the existing v1 Full/Lite download instructions remain authoritative below.
 
 An unofficial personal tool that displays values from the ChatGPT Codex usage page in the Windows 10/11 system tray and a desktop widget.
 

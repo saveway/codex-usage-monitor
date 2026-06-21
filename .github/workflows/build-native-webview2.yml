@@ -102,6 +102,55 @@ jobs:
           "$hash  CodexUsageMonitorV2-windows-webview2.zip" | Set-Content -LiteralPath "$zip.sha256" -Encoding ASCII
           Get-Content -LiteralPath "$zip.sha256"
 
+      - name: Audit final ZIP contents
+        shell: pwsh
+        run: |
+          $zip = Join-Path $PWD "CodexUsageMonitorV2-windows-webview2.zip"
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $archive = [System.IO.Compression.ZipFile]::OpenRead($zip)
+          try {
+            $actual = @($archive.Entries | Where-Object {
+              -not [string]::IsNullOrEmpty($_.Name)
+            } | ForEach-Object {
+              $_.FullName.Replace("/", "\")
+            } | Sort-Object)
+          }
+          finally {
+            $archive.Dispose()
+          }
+
+          $expected = @(
+            "CodexUsageMonitorV2.exe",
+            "CodexUsageMonitorV2.exe.config",
+            "LICENSE",
+            "Microsoft.Web.WebView2.Core.dll",
+            "Microsoft.Web.WebView2.WinForms.dll",
+            "README-native.md",
+            "runtimes\win-x64\native\WebView2Loader.dll"
+          ) | Sort-Object
+          $expectedText = [string]::Join("`n", $expected)
+          $actualText = [string]::Join("`n", $actual)
+          if ($expectedText -ne $actualText) {
+            Write-Error "Expected ZIP files:`n$expectedText"
+            Write-Error "Actual ZIP files:`n$actualText"
+            throw "Final ZIP file list does not match the documented distribution."
+          }
+
+          $forbidden = @($actual | Where-Object {
+            $_ -match "(?i)(^|[\\/])(bin|obj|\.vs|webview2-profile|CodexUsageMonitorV2|AppData|LocalAppData)([\\/]|$)" -or
+            $_ -match "(?i)\.(pdb|log|lock|pid)$" -or
+            $_ -match "(?i)(^|[\\/])codex-usage.*\.json$" -or
+            $_ -match "(?i)(^|[\\/])\.env$"
+          })
+          if ($forbidden.Count -gt 0) {
+            $forbidden | ForEach-Object { Write-Error "Forbidden ZIP item: $_" }
+            throw "Final ZIP contains build output or private runtime data."
+          }
+
+          Write-Host "Final ZIP audit passed. Included files:"
+          $actual | ForEach-Object { Write-Host " - $_" }
+          Write-Host "Excluded categories verified: bin, obj, PDB, log, WebView2 profile, CodexUsageMonitorV2/AppData runtime data."
+
       - name: Upload native WebView2 artifact
         uses: actions/upload-artifact@v4
         with:

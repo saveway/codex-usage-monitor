@@ -1,6 +1,10 @@
-# Codex Usage Monitor V2 - WebView2 prototype
+# Codex Usage Monitor V2 - WebView2 native preview
 
-This folder contains an isolated first prototype for a native Windows version. It does not replace or modify the v1 Python, PowerShell, Playwright, release, tag, or GitHub Actions structure.
+This folder contains a release-candidate preview of a small native Windows version. It is usable for manual tray-based collection, but it does not replace the established v1 Full/Lite distributions. V1 source, releases, tags, and release workflow remain independent.
+
+## Preview status
+
+The preview has been verified with a real visible ChatGPT login, persistent WebView2 session, authenticated usage-page parsing, tray menu operation, cache cleanup, stable exit, and a clean GitHub Actions artifact. It is still labeled **preview** because it has no scheduler, widget, installer, startup registration, code signing, or broad multi-machine compatibility testing.
 
 ## Design decision
 
@@ -12,7 +16,7 @@ This folder contains an isolated first prototype for a native Windows version. I
 
 Using .NET Framework 4.8 is practical for this prototype and keeps the app binaries small. The target PC must have .NET Framework 4.8 and the Microsoft Edge WebView2 Runtime. Windows 10/11 commonly has WebView2 already, but the app checks at runtime and offers the official Microsoft download page if it is missing.
 
-## Implemented prototype scope
+## Current features
 
 - Notification-area icon with `Open/Login usage page`, `Fetch now`, `Reload saved data`, `Open data file`, `Open log`, `Clear WebView2 cache`, and `Exit`.
 - The tray tooltip shows the last saved 5-hour percentage, weekly percentage, update time, and compact status. It uses a short format such as `5h 00% | W 00% | 06-22 12:34 | Saved` to remain within the Windows tooltip limit.
@@ -78,7 +82,7 @@ https://developer.microsoft.com/microsoft-edge/webview2/
 
 ## GitHub Actions artifact
 
-The separate `Build native WebView2 prototype` workflow is manual-only (`workflow_dispatch`). It builds this project on `windows-latest`, audits a clean staging directory, and uploads an artifact named `CodexUsageMonitor-windows-webview2`.
+The separate `Build native WebView2 prototype` workflow is manual-only (`workflow_dispatch`). It builds this project on `windows-latest`, audits both the clean staging directory and the finished ZIP, and uploads an artifact named `CodexUsageMonitor-windows-webview2`.
 
 GitHub wraps artifacts in a download container. After downloading and opening that outer artifact ZIP, use:
 
@@ -87,7 +91,7 @@ CodexUsageMonitorV2-windows-webview2.zip
 CodexUsageMonitorV2-windows-webview2.zip.sha256
 ```
 
-The inner distribution ZIP contains only:
+The inner distribution ZIP contains the five required runtime files plus README and LICENSE, and nothing else:
 
 ```text
 CodexUsageMonitorV2.exe
@@ -101,6 +105,8 @@ runtimes\win-x64\native\WebView2Loader.dll
 
 Extract the entire inner ZIP and run `CodexUsageMonitorV2.exe`. Do not move the EXE away from its DLLs and `runtimes` directory. The package does not include Edge/Chromium; the target PC must have Microsoft Edge WebView2 Evergreen Runtime. The workflow does not publish a GitHub Release or attach files to a tag.
 
+The inner ZIP is approximately 0.3 MiB because it contains only the compressed application and WebView2 loader libraries. Microsoft Edge WebView2 Runtime provides the browser engine separately and is not bundled. Extracted files are approximately 0.9 MiB; the installed WebView2 Runtime and local user profile are separate from these package sizes.
+
 Verify the ZIP before extraction:
 
 ```powershell
@@ -108,7 +114,7 @@ Verify the ZIP before extraction:
 Get-Content .\CodexUsageMonitorV2-windows-webview2.zip.sha256
 ```
 
-## Local files
+## Local data and privacy
 
 The prototype may create:
 
@@ -121,7 +127,7 @@ The prototype may create:
   webview2-profile\
 ```
 
-The profile can contain authentication cookies needed to keep the user signed in. Treat it as private account data. Exit the app before deleting the directory. Deleting it resets all v2 local state and requires login again.
+The profile can contain authentication cookies needed to keep the user signed in. Treat the entire directory as private account data and never upload it with a bug report or source archive. Exit the app before deleting the directory. Deleting it resets all v2 local state and requires login again.
 
 ## Security and privacy principles
 
@@ -160,14 +166,14 @@ Trade-offs:
 
 V2 remains a prototype and is distributed only as a manually built Actions artifact. It is not yet part of the tagged v1 Releases.
 
-## Not implemented yet
+## Unsupported in this preview
 
 - Widget UI and graph styles.
 - Automatic periodic collection.
 - Credits and reset-time parsing.
-- Installer, startup registration, code signing, packaging, GitHub Actions, and Release publishing.
+- Installer, Windows startup registration, code signing, tagged Release publishing, and automatic Release attachment.
 - Localization and polished icons.
-- Automated end-to-end testing against an authenticated account.
+- Automated end-to-end testing against an authenticated account; authenticated validation is currently an explicit manual test.
 - Resilience against future ChatGPT wording, localization, routing, or DOM changes beyond the current text parser.
 
 ## Prototype verification status
