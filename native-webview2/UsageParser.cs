@@ -51,6 +51,38 @@ namespace CodexUsageMonitorV2
             File.Move(temporaryPath, AppPaths.DataPath);
         }
 
+        public static bool TryLoad(out UsageSnapshot snapshot, out string error)
+        {
+            snapshot = null;
+            error = null;
+            if (!File.Exists(AppPaths.DataPath))
+            {
+                error = "No saved usage data is available.";
+                return false;
+            }
+
+            try
+            {
+                var serializer = new JavaScriptSerializer();
+                snapshot = serializer.Deserialize<UsageSnapshot>(File.ReadAllText(AppPaths.DataPath, Encoding.UTF8));
+                if (snapshot == null ||
+                    snapshot.fiveHourRemaining < 0 || snapshot.fiveHourRemaining > 100 ||
+                    snapshot.weeklyRemaining < 0 || snapshot.weeklyRemaining > 100 ||
+                    string.IsNullOrWhiteSpace(snapshot.updatedAt))
+                {
+                    throw new InvalidDataException("Saved usage data is incomplete or invalid.");
+                }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                snapshot = null;
+                error = "Saved usage data could not be read: " + ex.Message;
+                AppLogger.Write(error);
+                return false;
+            }
+        }
+
         private static int MatchPercentage(Regex regex, string text, string label)
         {
             var match = regex.Match(text);

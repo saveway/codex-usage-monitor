@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
 
 namespace CodexUsageMonitorV2
 {
@@ -34,18 +35,23 @@ namespace CodexUsageMonitorV2
 
                 try
                 {
+                    var directoryBytes = 0L;
+                    var directoryFiles = 0;
                     foreach (var file in Directory.EnumerateFiles(fullPath, "*", SearchOption.AllDirectories))
                     {
                         try
                         {
-                            result.RemovedBytes += new FileInfo(file).Length;
-                            result.RemovedFiles++;
+                            directoryBytes += new FileInfo(file).Length;
+                            directoryFiles++;
                         }
                         catch
                         {
                         }
                     }
-                    Directory.Delete(fullPath, true);
+
+                    DeleteWithRetry(fullPath);
+                    result.RemovedBytes += directoryBytes;
+                    result.RemovedFiles += directoryFiles;
                     result.RemovedDirectories++;
                 }
                 catch (Exception ex)
@@ -61,6 +67,28 @@ namespace CodexUsageMonitorV2
                     result.RemovedFiles + " files, " + result.RemovedBytes + " bytes.");
             }
             return result;
+        }
+
+        private static void DeleteWithRetry(string path)
+        {
+            Exception lastError = null;
+            for (var attempt = 0; attempt < 5; attempt++)
+            {
+                try
+                {
+                    Directory.Delete(path, true);
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    lastError = ex;
+                    if (attempt < 4)
+                    {
+                        Thread.Sleep(250);
+                    }
+                }
+            }
+            throw lastError ?? new IOException("Cache directory could not be removed.");
         }
     }
 

@@ -7,3 +7,6 @@ obj/
 *.log
 CodexUsageMonitorV2/
 webview2-profile/
+CodexUsageMonitorV2-windows-webview2.zip
+CodexUsageMonitorV2-windows-webview2.zip.sha256
+*.sha256

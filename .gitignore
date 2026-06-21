@@ -13,6 +13,9 @@ codex-usage*.json
 !codex-usage-settings.example.json
 *.tmp
 *.bak
+/native-webview2.zip
+/CodexUsageMonitorV2-windows-webview2.zip
+/CodexUsageMonitorV2-windows-webview2.zip.sha256
 *.har
 storage-state*.json
 *.trace.zip

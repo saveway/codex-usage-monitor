@@ -14,7 +14,8 @@ Using .NET Framework 4.8 is practical for this prototype and keeps the app binar
 
 ## Implemented prototype scope
 
-- Notification-area icon with `Open/Login`, `Fetch now`, `Open data file`, `Open log`, and `Exit`.
+- Notification-area icon with `Open/Login usage page`, `Fetch now`, `Reload saved data`, `Open data file`, `Open log`, `Clear WebView2 cache`, and `Exit`.
+- The tray tooltip shows the last saved 5-hour percentage, weekly percentage, update time, and compact status. It uses a short format such as `5h 00% | W 00% | 06-22 12:34 | Saved` to remain within the Windows tooltip limit.
 - A visible WebView2 window opens `https://chatgpt.com/codex/cloud/settings/analytics#usage`.
 - Login happens only on the real ChatGPT/OpenAI page shown in WebView2.
 - The persistent WebView2 user-data folder is `%LOCALAPPDATA%\CodexUsageMonitorV2\webview2-profile`.
@@ -24,6 +25,7 @@ Using .NET Framework 4.8 is practical for this prototype and keeps the app binar
 - A failed parse writes only `codex-usage-debug-status.txt`, containing allowlisted host/category and present/absent flags for expected labels. It never contains page excerpts, percentages, email addresses, cookies, or tokens.
 - Logs are written to `codex-usage-monitor-v2.log` and rotated at approximately 2 MB, retaining one `.1` backup.
 - Startup and exit remove selected cache-only directories under WebView2's `EBWebView` data root, including `Cache`, `Code Cache`, `GPUCache`, shader caches, service-worker cache storage, and Crashpad reports. Cookies, Local Storage, IndexedDB, and session storage are not selected for deletion.
+- `Clear WebView2 cache` invokes the same allowlisted cache cleanup manually and reports the removed file count and size. It does not select Cookies, Local Storage, IndexedDB, or Session Storage for deletion.
 - WebView2 is launched with small disk/media cache limits. These flags are for storage control, not automation concealment.
 - Exit uses one guarded cleanup path and disposes the browser form and notification icon inside exception-safe blocks. The app does not create PID or lock files.
 
@@ -47,18 +49,28 @@ The initial x64 Release build contains five files:
 
 | File | Bytes |
 |---|---:|
-| `CodexUsageMonitorV2.exe` | 32,768 |
+| `CodexUsageMonitorV2.exe` | 35,840 |
 | `CodexUsageMonitorV2.exe.config` | 174 |
 | `Microsoft.Web.WebView2.Core.dll` | 698,248 |
 | `Microsoft.Web.WebView2.WinForms.dll` | 38,792 |
 | `runtimes\win-x64\native\WebView2Loader.dll` | 163,208 |
-| **Total** | **933,190 (about 0.89 MiB)** |
+| **Total** | **936,262 (about 0.89 MiB)** |
 
 The normal build directory is slightly larger because NuGet also copies assemblies that this WinForms-only package does not need. Use the `deploy` directory for size evaluation.
 
 ## Run
 
-Run `bin\Release\net48\deploy\CodexUsageMonitorV2.exe`. Right-click the tray icon and choose `Open/Login`. Sign in directly on the ChatGPT/OpenAI page if requested. After the usage page is visible, choose `Fetch now` to read and save the two percentages.
+Run `bin\Release\net48\deploy\CodexUsageMonitorV2.exe`. Right-click the tray icon and choose `Open/Login usage page`. Sign in directly on the visible ChatGPT/OpenAI page if requested. Choose `Fetch now` to open that visible page, wait for it to render, read the two percentages, save JSON, and refresh the tray tooltip.
+
+The remaining menu commands behave as follows:
+
+- `Reload saved data` reads only `%LOCALAPPDATA%\CodexUsageMonitorV2\codex-usage.json` and refreshes the tooltip. It does not create or navigate a WebView2 instance.
+- `Open data file` opens the saved JSON in Notepad when it exists.
+- `Open log` opens the local v2 log in Notepad.
+- `Clear WebView2 cache` removes only the allowlisted cache directories described above and preserves login-storage candidates.
+- `Exit` closes the WebView2 form, hides and disposes the notification icon, runs final cache cleanup, and exits without PID or lock files.
+
+There is no automatic or periodic fetch in this prototype. Usage changes only when `Fetch now` succeeds or the local display is refreshed with `Reload saved data`.
 
 If WebView2 Runtime is missing, install the Evergreen Runtime from the official Microsoft WebView2 download page and restart the app:
 
@@ -169,6 +181,7 @@ V2 remains a prototype and is distributed only as a manually built Actions artif
 - Example Korean usage-text parsing and JSON persistence: successful (75% 5-hour, 60% weekly). This fixture is not presented as real account data.
 - Cache cleanup against a real WebView2 profile: removed 231 cache files (32,188,683 measured bytes), reducing the test profile from about 33.5 MiB to about 2.82 MiB while leaving session-storage candidates untouched.
 - Guarded application-context exit after authenticated testing: successful with exit code 0. No related app process, PID file, or lock file remained, and the log file could be reopened with exclusive access.
+- Tray usability integration: all seven menu commands were present; the tooltip contained both percentages, update time, and status; saved-data reload did not initialize WebView2; cache cleanup removed an allowlisted test cache file; data/log commands opened their local files; visible fetch succeeded; and Exit completed without a cache deletion failure.
 - V1 tracked files: intentionally unchanged by this prototype.
 
 ## Remaining risks after authenticated verification
