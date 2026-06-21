@@ -47,13 +47,14 @@ jobs:
             --collect-all playwright `
             codex-usage-scraper.py
 
-      - name: Assemble Windows package
+      - name: Assemble Full and Lite packages
         shell: pwsh
         run: |
-          $package = Join-Path $PWD "release-package"
-          New-Item -ItemType Directory -Path $package -Force | Out-Null
+          $fullPackage = Join-Path $PWD "release-full"
+          $litePackage = Join-Path $PWD "release-lite"
+          New-Item -ItemType Directory -Path $fullPackage, $litePackage -Force | Out-Null
 
-          $publicFiles = @(
+          $liteFiles = @(
             "LICENSE",
             "README.md",
             "README.en.md",
@@ -67,15 +68,14 @@ jobs:
             "run-codex-usage-tray.bat",
             "uninstall-startup.ps1"
           )
-          Copy-Item -LiteralPath $publicFiles -Destination $package
-          Copy-Item -LiteralPath "dist\codex-usage-scraper.exe" -Destination $package
-          Copy-Item -LiteralPath "playwright-browsers" -Destination $package -Recurse
+          Copy-Item -LiteralPath $liteFiles -Destination $litePackage
+          Copy-Item -LiteralPath $liteFiles -Destination $fullPackage
+          Copy-Item -LiteralPath "dist\codex-usage-scraper.exe" -Destination $fullPackage
+          Copy-Item -LiteralPath "playwright-browsers" -Destination $fullPackage -Recurse
 
-      - name: Audit package contents
+      - name: Audit Full and Lite package contents
         shell: pwsh
         run: |
-          $package = Join-Path $PWD "release-package"
-          $items = Get-ChildItem -LiteralPath $package -Force -Recurse
           $forbiddenDirectories = @("browser-profile", "CodexUsageMonitor", "__pycache__", ".pytest_cache")
           $forbiddenFiles = @(
             "codex-usage.json",
@@ -84,48 +84,89 @@ jobs:
             ".env"
           )
 
-          $forbidden = @($items | Where-Object {
-            ($_.PSIsContainer -and $forbiddenDirectories -contains $_.Name) -or
-            (-not $_.PSIsContainer -and (
-              $forbiddenFiles -contains $_.Name -or
-              $_.Name -match "page-text" -or
-              $_.Extension -in @(".log", ".lock", ".pid") -or
-              $_.Name -like ".env.*"
-            ))
-          })
-          if ($forbidden.Count -gt 0) {
-            $forbidden | ForEach-Object { Write-Error "Forbidden package item: $($_.FullName)" }
-            throw "Package contains runtime or private files."
+          foreach ($packageName in @("release-full", "release-lite")) {
+            $package = Join-Path $PWD $packageName
+            $items = Get-ChildItem -LiteralPath $package -Force -Recurse
+            $forbidden = @($items | Where-Object {
+              ($_.PSIsContainer -and $forbiddenDirectories -contains $_.Name) -or
+              (-not $_.PSIsContainer -and (
+                $forbiddenFiles -contains $_.Name -or
+                $_.Name -match "page-text" -or
+                $_.Extension -in @(".log", ".lock", ".pid") -or
+                $_.Name -like ".env.*"
+              ))
+            })
+            if ($forbidden.Count -gt 0) {
+              $forbidden | ForEach-Object { Write-Error "Forbidden package item: $($_.FullName)" }
+              throw "$packageName contains runtime or private files."
+            }
+
+            $textFiles = Get-ChildItem -LiteralPath $package -File | Where-Object {
+              $_.Extension -in @(".py", ".ps1", ".bat", ".md", ".json", ".txt") -or $_.Name -eq "LICENSE"
+            }
+            $secretPattern = "sk-[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|AKIA[0-9A-Z]{16}|-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----"
+            $secretHits = @($textFiles | Select-String -Pattern $secretPattern -AllMatches)
+            if ($secretHits.Count -gt 0) {
+              $secretHits | ForEach-Object { Write-Error "Possible secret: $($_.Path):$($_.LineNumber)" }
+              throw "$packageName contains a possible secret."
+            }
           }
 
-          $textFiles = Get-ChildItem -LiteralPath $package -File | Where-Object {
-            $_.Extension -in @(".py", ".ps1", ".bat", ".md", ".json", ".txt") -or $_.Name -eq "LICENSE"
+          $expectedLiteFiles = @(
+            "LICENSE",
+            "README.md",
+            "README.en.md",
+            "codex-usage-scraper.py",
+            "codex-usage-tray.ps1",
+            "codex-usage.example.json",
+            "codex-usage-settings.example.json",
+            "debug-codex-usage-tray.bat",
+            "install-startup.ps1",
+            "requirements.txt",
+            "run-codex-usage-tray.bat",
+            "uninstall-startup.ps1"
+          ) | Sort-Object
+          $actualLiteFiles = @(Get-ChildItem -LiteralPath "release-lite" -File | Select-Object -ExpandProperty Name | Sort-Object)
+          $unexpectedLiteItems = @(Get-ChildItem -LiteralPath "release-lite" -Directory)
+          if (Compare-Object $expectedLiteFiles $actualLiteFiles -SyncWindow 0) {
+            throw "Lite package file list does not match the approved public files."
           }
-          $secretPattern = "sk-[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|AKIA[0-9A-Z]{16}|-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----"
-          $secretHits = @($textFiles | Select-String -Pattern $secretPattern -AllMatches)
-          if ($secretHits.Count -gt 0) {
-            $secretHits | ForEach-Object { Write-Error "Possible secret: $($_.Path):$($_.LineNumber)" }
-            throw "Package contains a possible secret."
+          if ($unexpectedLiteItems.Count -gt 0) {
+            throw "Lite package must not contain directories or browser binaries."
           }
 
-          Write-Host "Package audit passed."
+          Write-Host "Full and Lite package audits passed."
 
-      - name: Create ZIP and SHA256
+      - name: Create Full and Lite ZIPs and SHA256 files
         shell: pwsh
         run: |
-          $zip = Join-Path $PWD "CodexUsageMonitor-windows-full.zip"
-          Compress-Archive -Path "release-package\*" -DestinationPath $zip -CompressionLevel Optimal
-          $hash = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
-          "$hash  CodexUsageMonitor-windows-full.zip" | Set-Content -LiteralPath "CodexUsageMonitor-windows-full.zip.sha256" -Encoding ASCII
-          Get-Content -LiteralPath "CodexUsageMonitor-windows-full.zip.sha256"
+          $packages = @(
+            @{ Directory = "release-full"; File = "CodexUsageMonitor-windows-full.zip" },
+            @{ Directory = "release-lite"; File = "CodexUsageMonitor-windows-lite.zip" }
+          )
+          foreach ($package in $packages) {
+            Compress-Archive -Path "$($package.Directory)\*" -DestinationPath $package.File -CompressionLevel Optimal
+            $hash = (Get-FileHash -LiteralPath $package.File -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$hash  $($package.File)" | Set-Content -LiteralPath "$($package.File).sha256" -Encoding ASCII
+            Get-Content -LiteralPath "$($package.File).sha256"
+          }
 
-      - name: Upload Windows artifact
+      - name: Upload Full Windows artifact
         uses: actions/upload-artifact@v4
         with:
           name: CodexUsageMonitor-windows-full
           path: |
             CodexUsageMonitor-windows-full.zip
             CodexUsageMonitor-windows-full.zip.sha256
+          if-no-files-found: error
+
+      - name: Upload Lite Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CodexUsageMonitor-windows-lite
+          path: |
+            CodexUsageMonitor-windows-lite.zip
+            CodexUsageMonitor-windows-lite.zip.sha256
           if-no-files-found: error
 
       - name: Publish tagged GitHub Release
@@ -135,11 +176,15 @@ jobs:
           files: |
             CodexUsageMonitor-windows-full.zip
             CodexUsageMonitor-windows-full.zip.sha256
+            CodexUsageMonitor-windows-lite.zip
+            CodexUsageMonitor-windows-lite.zip.sha256
           generate_release_notes: true
           body: |
             ## Windows distribution notice
 
             - This is an unofficial tool and is not an official OpenAI application.
+            - Full includes Playwright Chromium and runs without a separate Python installation.
+            - Lite excludes Chromium and requires Python 3.11+, `pip install -r requirements.txt`, and `python -m playwright install chromium`.
             - The browser login session may be stored locally in `%LOCALAPPDATA%\CodexUsageMonitor\browser-profile`.
             - The executable is unsigned, so Windows SmartScreen may display a warning.
             - If you do not trust the packaged executable, run the project directly from source.

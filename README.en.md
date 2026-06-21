@@ -37,11 +37,13 @@ The `browser-profile/` may contain a live login session. Never upload or share t
 
 ## Run the Windows Package from GitHub Releases
 
-To use the program without installing Python, download these two files from the repository's [Releases](https://github.com/saveway/codex-usage-monitor/releases) page:
+Download either the Full or Lite package and its matching SHA256 file from the repository's [Releases](https://github.com/saveway/codex-usage-monitor/releases) page:
 
 ```text
 CodexUsageMonitor-windows-full.zip
 CodexUsageMonitor-windows-full.zip.sha256
+CodexUsageMonitor-windows-lite.zip
+CodexUsageMonitor-windows-lite.zip.sha256
 ```
 
 1. Save both files in the same directory.
@@ -52,18 +54,31 @@ CodexUsageMonitor-windows-full.zip.sha256
    Get-Content .\CodexUsageMonitor-windows-full.zip.sha256
    ```
 
+   If you selected Lite, replace `full` with `lite` in both commands.
+
 3. Confirm that the hashes match, then extract the ZIP to a directory of your choice.
 4. Run `run-codex-usage-tray.bat` from the extracted directory.
 
 The Full Windows package includes a PyInstaller-built scraper executable and the Playwright Chromium used for both visible login and headless automatic collection. Its download and extracted sizes can therefore be hundreds of megabytes, but it runs without a separate Python or Playwright installation.
 
-When you download a GitHub Actions artifact, the outer ZIP named `CodexUsageMonitor-windows-full` contains the actual `CodexUsageMonitor-windows-full.zip` distribution and `CodexUsageMonitor-windows-full.zip.sha256`. Extract the outer ZIP first, then verify the SHA256 of the inner distribution ZIP. GitHub Releases provide these two files directly.
+The Lite Windows package contains no Chromium browser or executable. It contains only the public source, scripts, documentation, and example JSON files. It is much smaller, but you must install Python 3.11 or newer and run these commands in the extracted directory:
+
+```powershell
+pip install -r requirements.txt
+python -m playwright install chromium
+```
+
+After installation, run `run-codex-usage-tray.bat`. Lite stores login sessions and usage data in `%LOCALAPPDATA%\CodexUsageMonitor`, just like Full.
+
+When you download a GitHub Actions artifact, the outer ZIP named `CodexUsageMonitor-windows-full` or `CodexUsageMonitor-windows-lite` contains the actual distribution ZIP and its matching SHA256 file. Extract the outer ZIP first, then verify the SHA256 of the inner distribution ZIP. GitHub Releases provide all four files directly.
 
 The distributed executable is not code-signed, so Windows SmartScreen may display a warning. If you do not trust the packaged executable, do not bypass the warning; use the source instructions below and run the project directly from source.
 
 The ZIP distribution stores and transmits the same data as the source version. It uses no developer-operated server or telemetry. Login session data, usage, settings, and logs are stored locally in `%LOCALAPPDATA%\CodexUsageMonitor`. After exiting the app, delete this directory to remove local data created by the distribution.
 
-Manually dispatched Actions builds can be downloaded as the `CodexUsageMonitor-windows-full` artifact from the workflow run page. Builds triggered by a `v*` tag automatically attach the same ZIP and SHA256 file to a GitHub Release. A smaller Chromium-free `lite` package is not currently provided; it may be added later for users willing to install Python and Playwright separately.
+Manually dispatched Actions builds provide separate `CodexUsageMonitor-windows-full` and `CodexUsageMonitor-windows-lite` artifacts. Builds triggered by a `v*` tag automatically attach both ZIPs and their SHA256 files to a GitHub Release.
+
+TODO: On Windows systems with Microsoft Edge installed, Playwright `channel="msedge"` could support a simpler Edge-based package without bundling Chromium. This requires thorough validation of the installed Edge/Playwright version combination, visible and headless operation, and persistent profile behavior before it can become a separate distribution option.
 
 ## Run from Source
 
