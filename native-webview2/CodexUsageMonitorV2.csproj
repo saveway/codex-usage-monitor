@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <PlatformTarget>x64</PlatformTarget>
+    <Prefer32Bit>false</Prefer32Bit>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>CodexUsageMonitorV2</RootNamespace>
+    <AssemblyName>CodexUsageMonitorV2</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="All" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4022.49" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="System.Web.Extensions" />
+  </ItemGroup>
+
+  <Target Name="PrepareDeployment" AfterTargets="Build">
+    <PropertyGroup>
+      <DeploymentDirectory>$(OutputPath)deploy\</DeploymentDirectory>
+    </PropertyGroup>
+    <RemoveDir Directories="$(DeploymentDirectory)" />
+    <MakeDir Directories="$(DeploymentDirectory)" />
+    <MakeDir Directories="$(DeploymentDirectory)runtimes\win-x64\native\" />
+    <ItemGroup>
+      <DeploymentFiles Include="$(TargetPath)" />
+      <DeploymentFiles Include="$(TargetPath).config" />
+      <DeploymentFiles Include="$(OutputPath)Microsoft.Web.WebView2.Core.dll" />
+      <DeploymentFiles Include="$(OutputPath)Microsoft.Web.WebView2.WinForms.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(DeploymentFiles)" DestinationFolder="$(DeploymentDirectory)" />
+    <Copy
+      SourceFiles="$(OutputPath)runtimes\win-x64\native\WebView2Loader.dll"
+      DestinationFolder="$(DeploymentDirectory)runtimes\win-x64\native\" />
+  </Target>
+</Project>
