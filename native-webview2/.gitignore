@@ -1,2 +1,9 @@
 bin/
 obj/
+.vs/
+*.user
+*.suo
+*.pdb
+*.log
+CodexUsageMonitorV2/
+webview2-profile/

@@ -1,0 +1,112 @@
+name: Build native WebView2 prototype
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-native-webview2:
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore native prototype
+        working-directory: native-webview2
+        run: dotnet restore
+
+      - name: Build native prototype
+        working-directory: native-webview2
+        run: dotnet build -c Release --no-restore
+
+      - name: Assemble and audit minimal package
+        shell: pwsh
+        run: |
+          $deploy = Join-Path $PWD "native-webview2\bin\Release\net48\deploy"
+          $package = Join-Path $env:RUNNER_TEMP "CodexUsageMonitorV2-windows-webview2"
+          $nativeDirectory = Join-Path $package "runtimes\win-x64\native"
+          New-Item -ItemType Directory -Path $nativeDirectory -Force | Out-Null
+
+          $deployFiles = @(
+            "CodexUsageMonitorV2.exe",
+            "CodexUsageMonitorV2.exe.config",
+            "Microsoft.Web.WebView2.Core.dll",
+            "Microsoft.Web.WebView2.WinForms.dll"
+          )
+          foreach ($file in $deployFiles) {
+            Copy-Item -LiteralPath (Join-Path $deploy $file) -Destination $package
+          }
+          Copy-Item -LiteralPath (Join-Path $deploy "runtimes\win-x64\native\WebView2Loader.dll") -Destination $nativeDirectory
+          Copy-Item -LiteralPath "native-webview2\README-native.md" -Destination $package
+          Copy-Item -LiteralPath "LICENSE" -Destination $package
+
+          $expected = @(
+            "CodexUsageMonitorV2.exe",
+            "CodexUsageMonitorV2.exe.config",
+            "LICENSE",
+            "Microsoft.Web.WebView2.Core.dll",
+            "Microsoft.Web.WebView2.WinForms.dll",
+            "README-native.md",
+            "runtimes\win-x64\native\WebView2Loader.dll"
+          ) | Sort-Object
+          $actual = @(Get-ChildItem -LiteralPath $package -Recurse -File | ForEach-Object {
+            $_.FullName.Substring($package.Length + 1)
+          } | Sort-Object)
+          $expectedText = [string]::Join("`n", $expected)
+          $actualText = [string]::Join("`n", $actual)
+          if ($expectedText -ne $actualText) {
+            Write-Error "Expected package files:`n$expectedText"
+            Write-Error "Actual package files:`n$actualText"
+            throw "Native package file list does not match the approved list."
+          }
+
+          $forbidden = @(Get-ChildItem -LiteralPath $package -Force -Recurse | Where-Object {
+            $_.FullName -match "(?i)(^|[\\/])(bin|obj|\.vs|webview2-profile|CodexUsageMonitorV2)([\\/]|$)" -or
+            $_.Name -match "(?i)\.(pdb|log|lock|pid)$" -or
+            $_.Name -match "(?i)^codex-usage.*\.json$" -or
+            $_.Name -eq ".env"
+          })
+          if ($forbidden.Count -gt 0) {
+            $forbidden | ForEach-Object { Write-Error "Forbidden package item: $($_.FullName)" }
+            throw "Native package contains build output or private runtime data."
+          }
+
+          $secretPattern = "sk-[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|AKIA[0-9A-Z]{16}|-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----"
+          $textFiles = Get-ChildItem -LiteralPath $package -File | Where-Object {
+            $_.Extension -in @(".md", ".txt") -or $_.Name -eq "LICENSE"
+          }
+          $secretHits = @($textFiles | Select-String -Pattern $secretPattern -AllMatches)
+          if ($secretHits.Count -gt 0) {
+            $secretHits | ForEach-Object { Write-Error "Possible secret: $($_.Path):$($_.LineNumber)" }
+            throw "Native package contains a possible secret."
+          }
+
+          Write-Host "Approved native package files:"
+          $actual | ForEach-Object { Write-Host " - $_" }
+
+      - name: Create ZIP and SHA256
+        shell: pwsh
+        run: |
+          $package = Join-Path $env:RUNNER_TEMP "CodexUsageMonitorV2-windows-webview2"
+          $zip = Join-Path $PWD "CodexUsageMonitorV2-windows-webview2.zip"
+          Compress-Archive -Path "$package\*" -DestinationPath $zip -CompressionLevel Optimal
+          $hash = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  CodexUsageMonitorV2-windows-webview2.zip" | Set-Content -LiteralPath "$zip.sha256" -Encoding ASCII
+          Get-Content -LiteralPath "$zip.sha256"
+
+      - name: Upload native WebView2 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CodexUsageMonitor-windows-webview2
+          path: |
+            CodexUsageMonitorV2-windows-webview2.zip
+            CodexUsageMonitorV2-windows-webview2.zip.sha256
+          if-no-files-found: error

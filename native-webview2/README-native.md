@@ -64,6 +64,38 @@ If WebView2 Runtime is missing, install the Evergreen Runtime from the official 
 
 https://developer.microsoft.com/microsoft-edge/webview2/
 
+## GitHub Actions artifact
+
+The separate `Build native WebView2 prototype` workflow is manual-only (`workflow_dispatch`). It builds this project on `windows-latest`, audits a clean staging directory, and uploads an artifact named `CodexUsageMonitor-windows-webview2`.
+
+GitHub wraps artifacts in a download container. After downloading and opening that outer artifact ZIP, use:
+
+```text
+CodexUsageMonitorV2-windows-webview2.zip
+CodexUsageMonitorV2-windows-webview2.zip.sha256
+```
+
+The inner distribution ZIP contains only:
+
+```text
+CodexUsageMonitorV2.exe
+CodexUsageMonitorV2.exe.config
+Microsoft.Web.WebView2.Core.dll
+Microsoft.Web.WebView2.WinForms.dll
+README-native.md
+LICENSE
+runtimes\win-x64\native\WebView2Loader.dll
+```
+
+Extract the entire inner ZIP and run `CodexUsageMonitorV2.exe`. Do not move the EXE away from its DLLs and `runtimes` directory. The package does not include Edge/Chromium; the target PC must have Microsoft Edge WebView2 Evergreen Runtime. The workflow does not publish a GitHub Release or attach files to a tag.
+
+Verify the ZIP before extraction:
+
+```powershell
+(Get-FileHash .\CodexUsageMonitorV2-windows-webview2.zip -Algorithm SHA256).Hash.ToLowerInvariant()
+Get-Content .\CodexUsageMonitorV2-windows-webview2.zip.sha256
+```
+
 ## Local files
 
 The prototype may create:
@@ -107,6 +139,14 @@ Trade-offs:
 - DOM text parsing can break when ChatGPT wording or layout changes.
 - This prototype has not yet reproduced v1's widget, graphs, colors, alerts, credits, reset-time parsing, or scheduling.
 - `Fetch now` currently keeps the browser visible by design.
+
+### Distribution choices
+
+- **V1 Full:** includes Python-based collector dependencies and Playwright Chromium; largest download, but intended to run without separately installing Python or Playwright.
+- **V1 Lite:** contains the v1 scripts without Chromium; requires Python and a separate Playwright Chromium installation.
+- **V2 WebView2 prototype:** contains a small .NET Framework WinForms EXE and WebView2 loader libraries; requires the Windows WebView2 Runtime but does not require Python, Playwright, or bundled Chromium.
+
+V2 remains a prototype and is distributed only as a manually built Actions artifact. It is not yet part of the tagged v1 Releases.
 
 ## Not implemented yet
 
