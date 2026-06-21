@@ -22,8 +22,18 @@ $DataPath = Join-Path $RuntimeDir 'codex-usage.json'
 $LogPath = Join-Path $RuntimeDir 'codex-usage-tray.log'
 $ScraperLogPath = Join-Path $RuntimeDir 'codex-usage-scraper.log'
 $ScraperPidPath = Join-Path $RuntimeDir 'codex-usage-scraper.pid'
-$ScraperPath = Join-Path $AppDir 'codex-usage-scraper.py'
-$PythonwPath = 'pythonw.exe'
+$ScraperScriptPath = Join-Path $AppDir 'codex-usage-scraper.py'
+$ScraperExePath = Join-Path $AppDir 'codex-usage-scraper.exe'
+$ScraperIsExecutable = Test-Path -LiteralPath $ScraperExePath
+if ($ScraperIsExecutable) {
+    $ScraperPath = $ScraperExePath
+    $ScraperHostPath = $ScraperExePath
+    $ScraperBaseArguments = @()
+} else {
+    $ScraperPath = $ScraperScriptPath
+    $ScraperHostPath = 'pythonw.exe'
+    $ScraperBaseArguments = @($ScraperScriptPath)
+}
 $AckPath = Join-Path $RuntimeDir 'codex-usage-ack.json'
 $SettingsPath = Join-Path $RuntimeDir 'codex-usage-settings.json'
 $SettingsUrl = 'https://chatgpt.com/codex/cloud/settings/analytics#usage'
@@ -202,8 +212,19 @@ function Stop-UsageScraper {
         if (Test-Path -LiteralPath $ScraperPidPath) {
             $scraperProcessId = [int](Get-Content -LiteralPath $ScraperPidPath -Raw)
             $process = Get-CimInstance Win32_Process -Filter "ProcessId = $scraperProcessId"
-            $escapedScriptPath = [regex]::Escape([System.IO.Path]::GetFullPath($ScraperPath))
-            if ($process -and $process.Name -like 'python*' -and $process.CommandLine -match $escapedScriptPath) {
+            $isExpectedProcess = $false
+            if ($process -and $ScraperIsExecutable) {
+                $expectedExecutable = [System.IO.Path]::GetFullPath($ScraperExePath)
+                $isExpectedProcess = [string]::Equals(
+                    [string]$process.ExecutablePath,
+                    $expectedExecutable,
+                    [System.StringComparison]::OrdinalIgnoreCase
+                )
+            } elseif ($process) {
+                $escapedScriptPath = [regex]::Escape([System.IO.Path]::GetFullPath($ScraperScriptPath))
+                $isExpectedProcess = ($process.Name -like 'python*' -and $process.CommandLine -match $escapedScriptPath)
+            }
+            if ($isExpectedProcess) {
                 Stop-Process -Id $scraperProcessId -Force
             }
         }
@@ -215,7 +236,7 @@ function Stop-UsageScraper {
 function Restart-UsageScraper {
     Stop-UsageScraper
     try {
-        $process = Start-Process -FilePath $PythonwPath -ArgumentList @($ScraperPath) -WindowStyle Hidden -PassThru
+        $process = Start-Process -FilePath $ScraperHostPath -ArgumentList $ScraperBaseArguments -WindowStyle Hidden -PassThru
         Set-Content -LiteralPath $ScraperPidPath -Value $process.Id -Encoding ASCII
         Write-Log "Scraper restarted with interval $script:RefreshIntervalSeconds seconds."
     } catch {
@@ -226,7 +247,8 @@ function Restart-UsageScraper {
 function Start-VisibleFetch {
     Stop-UsageScraper
     try {
-        $script:ManualFetchProcess = Start-Process -FilePath $PythonwPath -ArgumentList @($ScraperPath, '--once', '--login') -WindowStyle Hidden -PassThru
+        $fetchArguments = @($ScraperBaseArguments) + @('--once', '--login')
+        $script:ManualFetchProcess = Start-Process -FilePath $ScraperHostPath -ArgumentList $fetchArguments -WindowStyle Hidden -PassThru
         if ($script:ManualFetchTimer) {
             $script:ManualFetchTimer.Stop()
             $script:ManualFetchTimer.Dispose()

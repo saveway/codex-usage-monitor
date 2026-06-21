@@ -14,7 +14,15 @@ from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright.sync_api import sync_playwright
 
 
-APP_DIR = Path(__file__).resolve().parent
+APP_DIR = (
+    Path(sys.executable).resolve().parent
+    if getattr(sys, "frozen", False)
+    else Path(__file__).resolve().parent
+)
+BUNDLED_BROWSERS_DIR = APP_DIR / "playwright-browsers"
+if BUNDLED_BROWSERS_DIR.is_dir():
+    os.environ.setdefault("PLAYWRIGHT_BROWSERS_PATH", str(BUNDLED_BROWSERS_DIR))
+
 RUNTIME_DIR = Path(os.environ.get("LOCALAPPDATA", str(APP_DIR))) / "CodexUsageMonitor"
 RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
 runtime_profile = RUNTIME_DIR / "browser-profile"

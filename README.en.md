@@ -35,7 +35,33 @@ The `browser-profile/` may contain a live login session. Never upload or share t
 - Windows PowerShell 5.1
 - Playwright Chromium
 
-## Installation
+## Run the Windows Package from GitHub Releases
+
+To use the program without installing Python, download these two files from the repository's [Releases](https://github.com/saveway/codex-usage-monitor/releases) page:
+
+```text
+CodexUsageMonitor-windows.zip
+CodexUsageMonitor-windows.zip.sha256
+```
+
+1. Save both files in the same directory.
+2. Verify the ZIP's SHA256 in PowerShell:
+
+   ```powershell
+   Get-FileHash .\CodexUsageMonitor-windows.zip -Algorithm SHA256
+   Get-Content .\CodexUsageMonitor-windows.zip.sha256
+   ```
+
+3. Confirm that the hashes match, then extract the ZIP to a directory of your choice.
+4. Run `run-codex-usage-tray.bat` from the extracted directory. The package includes a PyInstaller-built scraper executable and Playwright Chromium, so a separate Python installation is not required.
+
+The distributed executable is not code-signed, so Windows SmartScreen may display a warning. If you do not trust the packaged executable, do not bypass the warning; use the source instructions below and run the project directly from source.
+
+The ZIP distribution stores and transmits the same data as the source version. It uses no developer-operated server or telemetry. Login session data, usage, settings, and logs are stored locally in `%LOCALAPPDATA%\CodexUsageMonitor`. After exiting the app, delete this directory to remove local data created by the distribution.
+
+Manually dispatched Actions builds can be downloaded as the `CodexUsageMonitor-windows` artifact from the workflow run page. Builds triggered by a `v*` tag automatically attach the same ZIP and SHA256 file to a GitHub Release.
+
+## Run from Source
 
 Run the following commands in the project directory:
 

@@ -1,0 +1,145 @@
+name: Build Windows release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install build dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt pyinstaller
+
+      - name: Install bundled Playwright Chromium
+        shell: pwsh
+        run: |
+          $env:PLAYWRIGHT_BROWSERS_PATH = Join-Path $PWD "playwright-browsers"
+          python -m playwright install chromium
+
+      - name: Build scraper executable
+        shell: pwsh
+        run: |
+          python -m PyInstaller `
+            --noconfirm `
+            --clean `
+            --onefile `
+            --windowed `
+            --name codex-usage-scraper `
+            --collect-all playwright `
+            codex-usage-scraper.py
+
+      - name: Assemble Windows package
+        shell: pwsh
+        run: |
+          $package = Join-Path $PWD "release-package"
+          New-Item -ItemType Directory -Path $package -Force | Out-Null
+
+          $publicFiles = @(
+            "LICENSE",
+            "README.md",
+            "README.en.md",
+            "codex-usage-scraper.py",
+            "codex-usage-tray.ps1",
+            "codex-usage.example.json",
+            "codex-usage-settings.example.json",
+            "debug-codex-usage-tray.bat",
+            "install-startup.ps1",
+            "requirements.txt",
+            "run-codex-usage-tray.bat",
+            "uninstall-startup.ps1"
+          )
+          Copy-Item -LiteralPath $publicFiles -Destination $package
+          Copy-Item -LiteralPath "dist\codex-usage-scraper.exe" -Destination $package
+          Copy-Item -LiteralPath "playwright-browsers" -Destination $package -Recurse
+
+      - name: Audit package contents
+        shell: pwsh
+        run: |
+          $package = Join-Path $PWD "release-package"
+          $items = Get-ChildItem -LiteralPath $package -Force -Recurse
+          $forbiddenDirectories = @("browser-profile", "CodexUsageMonitor", "__pycache__", ".pytest_cache")
+          $forbiddenFiles = @(
+            "codex-usage.json",
+            "codex-usage-settings.json",
+            "codex-usage-ack.json",
+            ".env"
+          )
+
+          $forbidden = @($items | Where-Object {
+            ($_.PSIsContainer -and $forbiddenDirectories -contains $_.Name) -or
+            (-not $_.PSIsContainer -and (
+              $forbiddenFiles -contains $_.Name -or
+              $_.Name -match "page-text" -or
+              $_.Extension -in @(".log", ".lock", ".pid") -or
+              $_.Name -like ".env.*"
+            ))
+          })
+          if ($forbidden.Count -gt 0) {
+            $forbidden | ForEach-Object { Write-Error "Forbidden package item: $($_.FullName)" }
+            throw "Package contains runtime or private files."
+          }
+
+          $textFiles = Get-ChildItem -LiteralPath $package -File | Where-Object {
+            $_.Extension -in @(".py", ".ps1", ".bat", ".md", ".json", ".txt") -or $_.Name -eq "LICENSE"
+          }
+          $secretPattern = "sk-[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|AKIA[0-9A-Z]{16}|-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----"
+          $secretHits = @($textFiles | Select-String -Pattern $secretPattern -AllMatches)
+          if ($secretHits.Count -gt 0) {
+            $secretHits | ForEach-Object { Write-Error "Possible secret: $($_.Path):$($_.LineNumber)" }
+            throw "Package contains a possible secret."
+          }
+
+          Write-Host "Package audit passed."
+
+      - name: Create ZIP and SHA256
+        shell: pwsh
+        run: |
+          $zip = Join-Path $PWD "CodexUsageMonitor-windows.zip"
+          Compress-Archive -Path "release-package\*" -DestinationPath $zip -CompressionLevel Optimal
+          $hash = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  CodexUsageMonitor-windows.zip" | Set-Content -LiteralPath "CodexUsageMonitor-windows.zip.sha256" -Encoding ASCII
+          Get-Content -LiteralPath "CodexUsageMonitor-windows.zip.sha256"
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CodexUsageMonitor-windows
+          path: |
+            CodexUsageMonitor-windows.zip
+            CodexUsageMonitor-windows.zip.sha256
+          if-no-files-found: error
+
+      - name: Publish tagged GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            CodexUsageMonitor-windows.zip
+            CodexUsageMonitor-windows.zip.sha256
+          generate_release_notes: true
+          body: |
+            ## Windows distribution notice
+
+            - This is an unofficial tool and is not an official OpenAI application.
+            - The browser login session may be stored locally in `%LOCALAPPDATA%\CodexUsageMonitor\browser-profile`.
+            - The executable is unsigned, so Windows SmartScreen may display a warning.
+            - If you do not trust the packaged executable, run the project directly from source.
