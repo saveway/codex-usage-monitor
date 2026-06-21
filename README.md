@@ -75,6 +75,8 @@ CodexUsageMonitor-windows-lite.zip.sha256
 3. 두 해시가 같은지 확인한 뒤 ZIP을 원하는 폴더에 압축 해제합니다.
 4. 압축을 푼 폴더의 `run-codex-usage-tray.bat`를 실행합니다.
 
+Full 패키지의 `codex-usage-scraper.exe`는 사용자가 직접 실행하는 메인 프로그램이 아닙니다. BAT/PowerShell 트레이 앱이 백그라운드에서 호출하는 사용량 수집기입니다. Full과 Lite 모두 사용자는 `run-codex-usage-tray.bat`를 실행하면 됩니다.
+
 Full Windows package에는 PyInstaller로 만든 스크래퍼 exe와 visible 로그인·headless 자동 조회에 사용하는 Playwright Chromium이 포함됩니다. 따라서 다운로드 및 압축 해제 크기가 수백 MB가 될 수 있지만 Python이나 Playwright를 별도로 설치하지 않고 실행할 수 있습니다.
 
 Lite Windows package에는 Chromium과 exe가 포함되지 않으며 공개 소스·스크립트·문서·예제 JSON만 들어 있습니다. 용량은 작지만 사용자가 Python 3.11 이상을 설치한 뒤 압축 해제 폴더에서 다음 명령을 직접 실행해야 합니다.
@@ -131,6 +133,8 @@ powershell -ExecutionPolicy Bypass -File .\uninstall-startup.ps1
 2. 저장된 로그인 세션이 없으면 ChatGPT 로그인용 브라우저가 열립니다. 이는 비밀번호를 수집하기 위한 창이 아니라, 사용자가 OpenAI 페이지에서 직접 로그인하고 로컬 세션을 만드는 과정입니다.
 3. 브라우저에서 ChatGPT 로그인을 완료합니다. 사용량 페이지가 읽히면 브라우저가 닫히고 결과가 로컬 데이터 파일에 저장됩니다.
 4. Windows 알림 영역의 Codex 아이콘에 마우스를 올리거나 우클릭해 결과를 확인합니다.
+
+Full 패키지에서도 `codex-usage-scraper.exe`를 직접 실행하지 마십시오. 이 파일은 BAT/PowerShell 트레이 앱이 백그라운드에서 호출하는 수집기이며, Full과 Lite의 실행 방법은 모두 `run-codex-usage-tray.bat`로 같습니다.
 
 로그인 세션은 `%LOCALAPPDATA%\CodexUsageMonitor\browser-profile`에 유지될 수 있으므로 다음 실행부터는 보통 다시 로그인하지 않습니다. 세션이 만료되거나 OpenAI가 재인증을 요구하면 다시 표시 브라우저에서 로그인해야 합니다.
 

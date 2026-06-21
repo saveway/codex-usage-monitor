@@ -75,6 +75,8 @@ CodexUsageMonitor-windows-lite.zip.sha256
 3. Confirm that the hashes match, then extract the ZIP to a directory of your choice.
 4. Run `run-codex-usage-tray.bat` from the extracted directory.
 
+In the Full package, `codex-usage-scraper.exe` is not the main user-facing launcher; it is the background collector called by the BAT/PowerShell tray app. For both Full and Lite packages, start the app with `run-codex-usage-tray.bat`.
+
 The Full Windows package includes a PyInstaller-built scraper executable and the Playwright Chromium used for both visible login and headless automatic collection. Its download and extracted sizes can therefore be hundreds of megabytes, but it runs without a separate Python or Playwright installation.
 
 The Lite Windows package contains no Chromium browser or executable. It contains only the public source, scripts, documentation, and example JSON files. It is much smaller, but you must install Python 3.11 or newer and run these commands in the extracted directory:
@@ -131,6 +133,8 @@ powershell -ExecutionPolicy Bypass -File .\uninstall-startup.ps1
 2. If there is no saved login session, a browser opens for ChatGPT login. This browser does not collect your password; it lets you sign in directly on the OpenAI page and create a local session.
 3. Complete the ChatGPT login in the browser. Once the usage page is read, the browser closes and the result is written to the local data file.
 4. Hover over or right-click the Codex icon in the Windows notification area to see the result.
+
+Do not run `codex-usage-scraper.exe` directly in the Full package. It is the background collector called by the BAT/PowerShell tray app. Both Full and Lite packages are started with `run-codex-usage-tray.bat`.
 
 The login session may be retained in `%LOCALAPPDATA%\CodexUsageMonitor\browser-profile`, so you normally do not need to sign in on every run. If the session expires or OpenAI requires reauthentication, sign in again through the visible browser.
 
