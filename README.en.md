@@ -224,6 +224,10 @@ Main contents:
 
 Treat the entire directory as private data.
 
+The `%LOCALAPPDATA%\CodexUsageMonitor` directory can grow because `browser-profile/` retains browser data for the login session. The program removes nonessential browser caches at startup and after collection and limits log sizes, but some browser data may remain after long-term use.
+
+For a complete reset, select `Exit` from the tray or widget menu and then delete the entire `%LOCALAPPDATA%\CodexUsageMonitor` directory. This removes usage data, settings, logs, and the saved login session, so you must sign in to ChatGPT again on the next run.
+
 ## Debug Capture
 
 Full-page text capture is disabled by default. Enable it explicitly only when local debugging is necessary:

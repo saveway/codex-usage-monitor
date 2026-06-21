@@ -4,6 +4,7 @@ import json
 import msvcrt
 import os
 import re
+import shutil
 import sys
 import time
 from datetime import datetime, timedelta
@@ -37,9 +38,35 @@ SETTINGS_PATH = RUNTIME_DIR / "codex-usage-settings.json"
 DEBUG_CAPTURE = os.environ.get("CODEX_USAGE_DEBUG_CAPTURE") == "1"
 USAGE_URL = "https://chatgpt.com/codex/cloud/settings/analytics#usage"
 DEFAULT_INTERVAL_SECONDS = 10 * 60
+MAX_LOG_BYTES = 2 * 1024 * 1024
+MAX_DEBUG_CAPTURE_BYTES = 256 * 1024
+CACHE_DIRECTORIES = (
+    Path("Default/Cache"),
+    Path("Default/Code Cache"),
+    Path("Default/GPUCache"),
+    Path("ShaderCache"),
+    Path("GrShaderCache"),
+    Path("Default/Service Worker/CacheStorage"),
+    Path("Crashpad/reports"),
+)
+
+
+def rotate_file(path: Path, max_bytes: int) -> None:
+    try:
+        if not path.exists() or path.stat().st_size <= max_bytes:
+            return
+        backup = path.with_name(path.name + ".1")
+        with path.open("rb") as source:
+            source.seek(-max_bytes, os.SEEK_END)
+            tail = source.read(max_bytes)
+        backup.write_bytes(tail)
+        path.unlink()
+    except OSError:
+        pass
 
 
 def log(message: str) -> None:
+    rotate_file(LOG_PATH, MAX_LOG_BYTES)
     line = f"{datetime.now():%Y-%m-%d %H:%M:%S} {message}"
     with LOG_PATH.open("a", encoding="utf-8") as handle:
         handle.write(line + "\n")
@@ -61,7 +88,47 @@ def mask_page_text(text: str) -> str:
 
 def write_debug_capture(text: str) -> None:
     if DEBUG_CAPTURE:
-        PAGE_TEXT_PATH.write_text(mask_page_text(text), encoding="utf-8")
+        masked = mask_page_text(text)
+        encoded = masked.encode("utf-8")[:MAX_DEBUG_CAPTURE_BYTES]
+        PAGE_TEXT_PATH.write_text(encoded.decode("utf-8", errors="ignore"), encoding="utf-8")
+
+
+def limit_debug_capture_file() -> None:
+    try:
+        if not PAGE_TEXT_PATH.exists() or PAGE_TEXT_PATH.stat().st_size <= MAX_DEBUG_CAPTURE_BYTES:
+            return
+        with PAGE_TEXT_PATH.open("rb") as source:
+            content = source.read(MAX_DEBUG_CAPTURE_BYTES)
+        PAGE_TEXT_PATH.write_text(content.decode("utf-8", errors="ignore"), encoding="utf-8")
+        log(f"Trimmed {PAGE_TEXT_PATH.name} to {MAX_DEBUG_CAPTURE_BYTES} bytes.")
+    except OSError as exc:
+        log(f"Could not trim {PAGE_TEXT_PATH.name}: {exc}")
+
+
+def cleanup_browser_caches() -> tuple[int, int]:
+    removed_directories = 0
+    removed_bytes = 0
+    for relative_path in CACHE_DIRECTORIES:
+        cache_path = PROFILE_DIR / relative_path
+        if not cache_path.exists():
+            continue
+        try:
+            for item in cache_path.rglob("*"):
+                if item.is_file():
+                    try:
+                        removed_bytes += item.stat().st_size
+                    except OSError:
+                        pass
+            shutil.rmtree(cache_path)
+            removed_directories += 1
+        except OSError as exc:
+            log(f"Could not remove browser cache {relative_path}: {exc}")
+    if removed_directories:
+        log(
+            "Removed %s browser cache directories (%s bytes)."
+            % (removed_directories, removed_bytes)
+        )
+    return removed_directories, removed_bytes
 
 
 def read_existing_data() -> dict[str, Any]:
@@ -317,6 +384,10 @@ def collect_once(
             channel="chromium",
             viewport={"width": 1280, "height": 900},
             locale="ko-KR",
+            args=[
+                "--disk-cache-size=16777216",
+                "--media-cache-size=8388608",
+            ],
         )
         page = context.pages[0] if context.pages else context.new_page()
         page.goto(USAGE_URL, wait_until="domcontentloaded", timeout=60000)
@@ -351,6 +422,7 @@ def collect_once(
     finally:
         if context:
             context.close()
+        cleanup_browser_caches()
 
 
 def collect_with_session_mode(playwright) -> dict[str, Any]:
@@ -374,6 +446,8 @@ def collect_with_session_mode(playwright) -> dict[str, Any]:
 
 def main() -> int:
     log("Starting scraper.")
+    limit_debug_capture_file()
+    cleanup_browser_caches()
     lock_handle = acquire_lock()
     if lock_handle is None:
         return 0
@@ -414,7 +488,12 @@ def main() -> int:
         finally:
             lock_handle.close()
             try:
-                if PID_PATH.exists() and PID_PATH.read_text(encoding="ascii").strip() == str(os.getpid()):
+                owns_pid_file = (
+                    PID_PATH.exists()
+                    and PID_PATH.read_text(encoding="ascii").strip() == str(os.getpid())
+                )
+                if owns_pid_file:
+                    LOCK_PATH.unlink(missing_ok=True)
                     PID_PATH.unlink()
             except OSError:
                 pass

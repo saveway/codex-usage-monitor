@@ -22,6 +22,7 @@ $DataPath = Join-Path $RuntimeDir 'codex-usage.json'
 $LogPath = Join-Path $RuntimeDir 'codex-usage-tray.log'
 $ScraperLogPath = Join-Path $RuntimeDir 'codex-usage-scraper.log'
 $ScraperPidPath = Join-Path $RuntimeDir 'codex-usage-scraper.pid'
+$ScraperLockPath = Join-Path $RuntimeDir 'codex-usage-scraper.lock'
 $ScraperScriptPath = Join-Path $AppDir 'codex-usage-scraper.py'
 $ScraperExePath = Join-Path $AppDir 'codex-usage-scraper.exe'
 $ScraperIsExecutable = Test-Path -LiteralPath $ScraperExePath
@@ -48,6 +49,14 @@ $script:GraphStyle = 'Rings'
 $script:RefreshIntervalSeconds = 600
 $script:SharedMenu = $null
 $script:IntervalMenuItems = @{}
+$script:IsExiting = $false
+$script:NotifyIconDisposed = $false
+$script:NotifyIcon = $null
+$script:RefreshTimer = $null
+$script:BlinkTimer = $null
+$script:ManualFetchTimer = $null
+$script:ManualFetchProcess = $null
+$MaxLogBytes = 2MB
 $script:DefaultColors = [ordered]@{
     FiveCritical = '#B91C1C'
     FiveDanger = '#DC2626'
@@ -73,9 +82,34 @@ $script:DefaultColors = [ordered]@{
 }
 $script:Colors = [ordered]@{}
 
+function Rotate-LogFile {
+    param([string]$Path, [long]$MaxBytes)
+    try {
+        if ((Test-Path -LiteralPath $Path) -and ((Get-Item -LiteralPath $Path).Length -gt $MaxBytes)) {
+            $backupPath = "$Path.1"
+            $stream = [System.IO.File]::Open($Path, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+            try {
+                [void]$stream.Seek(-$MaxBytes, [System.IO.SeekOrigin]::End)
+                $buffer = New-Object byte[] $MaxBytes
+                $bytesRead = $stream.Read($buffer, 0, $buffer.Length)
+            } finally {
+                $stream.Dispose()
+            }
+            if ($bytesRead -gt 0) {
+                $tail = New-Object byte[] $bytesRead
+                [Array]::Copy($buffer, $tail, $bytesRead)
+                [System.IO.File]::WriteAllBytes($backupPath, $tail)
+            }
+            Remove-Item -LiteralPath $Path -Force -ErrorAction Stop
+        }
+    } catch {
+    }
+}
+
 function Write-Log {
     param([string]$Message)
     try {
+        Rotate-LogFile $LogPath $MaxLogBytes
         $line = '{0} {1}' -f (Get-Date).ToString('yyyy-MM-dd HH:mm:ss'), $Message
         Add-Content -LiteralPath $LogPath -Value $line -Encoding UTF8 -ErrorAction SilentlyContinue
     } catch {
@@ -207,29 +241,202 @@ function Reset-ThemeColors {
     Update-Tray
 }
 
+function Test-IsRelatedProcess {
+    param($Process)
+
+    if (-not $Process -or ([int]$Process.ProcessId -eq $PID)) {
+        return $false
+    }
+    $name = [string]$Process.Name
+    $commandLine = [string]$Process.CommandLine
+    $executablePath = [string]$Process.ExecutablePath
+    $allowedHost = $name -match '^(pythonw?|powershell|pwsh|codex-usage-scraper)(\.exe)?$'
+    if (-not $allowedHost) {
+        return $false
+    }
+
+    $expectedScraperExe = [System.IO.Path]::GetFullPath($ScraperExePath)
+    if ($executablePath -and [string]::Equals($executablePath, $expectedScraperExe, [System.StringComparison]::OrdinalIgnoreCase)) {
+        return $true
+    }
+
+    if ($name -match '^codex-usage-scraper(?:\.exe)?$') {
+        return $true
+    }
+    if ($name -match '^pythonw?(?:\.exe)?$' -and $commandLine -match 'codex-usage-scraper\.py') {
+        return $true
+    }
+    if ($name -match '^(powershell|pwsh)(?:\.exe)?$' -and $commandLine -match '(?i)(?:^|\s)-File\s+"?[^"\r\n]*codex-usage-tray\.ps1(?:"|\s|$)') {
+        return $true
+    }
+
+    return $false
+}
+
+function Test-IsScraperProcess {
+    param($Process)
+
+    if (-not $Process -or ([int]$Process.ProcessId -eq $PID)) {
+        return $false
+    }
+    $name = [string]$Process.Name
+    $commandLine = [string]$Process.CommandLine
+    $executablePath = [string]$Process.ExecutablePath
+    $expectedScraperExe = [System.IO.Path]::GetFullPath($ScraperExePath)
+    if ($executablePath -and [string]::Equals($executablePath, $expectedScraperExe, [System.StringComparison]::OrdinalIgnoreCase)) {
+        return $true
+    }
+    if ($name -match '^codex-usage-scraper(?:\.exe)?$') {
+        return $true
+    }
+    return ($name -match '^pythonw?(?:\.exe)?$' -and $commandLine -match 'codex-usage-scraper\.py')
+}
+
 function Stop-UsageScraper {
+    param([switch]$CleanupRelated)
+
+    $stoppedProcessIds = New-Object System.Collections.Generic.List[int]
     try {
         if (Test-Path -LiteralPath $ScraperPidPath) {
-            $scraperProcessId = [int](Get-Content -LiteralPath $ScraperPidPath -Raw)
-            $process = Get-CimInstance Win32_Process -Filter "ProcessId = $scraperProcessId"
-            $isExpectedProcess = $false
-            if ($process -and $ScraperIsExecutable) {
-                $expectedExecutable = [System.IO.Path]::GetFullPath($ScraperExePath)
-                $isExpectedProcess = [string]::Equals(
-                    [string]$process.ExecutablePath,
-                    $expectedExecutable,
-                    [System.StringComparison]::OrdinalIgnoreCase
-                )
-            } elseif ($process) {
-                $escapedScriptPath = [regex]::Escape([System.IO.Path]::GetFullPath($ScraperScriptPath))
-                $isExpectedProcess = ($process.Name -like 'python*' -and $process.CommandLine -match $escapedScriptPath)
+            $scraperProcessId = 0
+            if ([int]::TryParse((Get-Content -LiteralPath $ScraperPidPath -Raw).Trim(), [ref]$scraperProcessId)) {
+                $process = Get-CimInstance Win32_Process -Filter "ProcessId = $scraperProcessId" -ErrorAction SilentlyContinue
+                if (Test-IsScraperProcess $process) {
+                    Stop-Process -Id $scraperProcessId -Force -ErrorAction Stop
+                    $stoppedProcessIds.Add($scraperProcessId)
+                    Write-Log "Stopped scraper PID $scraperProcessId."
+                }
             }
-            if ($isExpectedProcess) {
-                Stop-Process -Id $scraperProcessId -Force
+        }
+
+        if ($CleanupRelated) {
+            $relatedProcesses = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
+                Test-IsRelatedProcess $_
+            }
+            foreach ($process in $relatedProcesses) {
+                $processId = [int]$process.ProcessId
+                if (-not $stoppedProcessIds.Contains($processId)) {
+                    try {
+                        Stop-Process -Id $processId -Force -ErrorAction Stop
+                        $stoppedProcessIds.Add($processId)
+                        Write-Log "Stopped related process PID $processId ($($process.Name))."
+                    } catch {
+                        Write-Log "Could not stop related PID $processId`: $($_.Exception.Message)"
+                    }
+                }
+            }
+        }
+
+        foreach ($processId in $stoppedProcessIds) {
+            try {
+                Wait-Process -Id $processId -Timeout 5 -ErrorAction SilentlyContinue
+            } catch {
             }
         }
     } catch {
         Write-Log ("Could not stop existing scraper: " + $_.Exception.Message)
+    }
+
+    try {
+        $remaining = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
+            Test-IsRelatedProcess $_
+        })
+        if (Test-Path -LiteralPath $ScraperPidPath) {
+            $remainingPid = 0
+            if ([int]::TryParse((Get-Content -LiteralPath $ScraperPidPath -Raw).Trim(), [ref]$remainingPid)) {
+                $pidProcess = Get-CimInstance Win32_Process -Filter "ProcessId = $remainingPid" -ErrorAction SilentlyContinue
+                if ($pidProcess -and -not ($remaining.ProcessId -contains $remainingPid)) {
+                    $remaining += $pidProcess
+                }
+            }
+        }
+        if ($remaining.Count -eq 0) {
+            Remove-Item -LiteralPath $ScraperPidPath -Force -ErrorAction SilentlyContinue
+            try {
+                Remove-Item -LiteralPath $ScraperLockPath -Force -ErrorAction Stop
+            } catch {
+                if (Test-Path -LiteralPath $ScraperLockPath) {
+                    Write-Log ("Could not remove scraper lock after process exit: " + $_.Exception.Message)
+                }
+            }
+        } else {
+            Write-Log "Skipped PID/lock cleanup because $($remaining.Count) related process(es) are still running."
+        }
+    } catch {
+        Write-Log ("Could not finalize scraper PID/lock cleanup: " + $_.Exception.Message)
+    }
+}
+
+function Invoke-AppCleanup {
+    param([switch]$RequestApplicationExit)
+
+    if ($script:IsExiting) {
+        return
+    }
+    $script:IsExiting = $true
+    Write-Log 'Application cleanup started.'
+
+    foreach ($timerName in @('RefreshTimer', 'BlinkTimer', 'ManualFetchTimer')) {
+        try {
+            $timer = Get-Variable -Name $timerName -Scope Script -ValueOnly -ErrorAction SilentlyContinue
+            if ($timer) {
+                $timer.Stop()
+                $timer.Dispose()
+                Set-Variable -Name $timerName -Scope Script -Value $null
+            }
+        } catch {
+            Write-Log "Could not dispose $timerName`: $($_.Exception.Message)"
+        }
+    }
+
+    try {
+        Stop-UsageScraper -CleanupRelated
+    } catch {
+        Write-Log ("Scraper cleanup failed: " + $_.Exception.Message)
+    }
+
+    try {
+        if ($script:WidgetForm -and -not $script:WidgetForm.IsDisposed) {
+            $script:WidgetForm.Close()
+        }
+    } catch {
+        Write-Log ("Could not close widget: " + $_.Exception.Message)
+    }
+
+    try {
+        if ($null -ne $script:NotifyIcon -and -not $script:NotifyIconDisposed) {
+            try {
+                $script:NotifyIcon.Visible = $false
+            } catch {
+                Write-Log ("Could not hide tray icon during cleanup: " + $_.Exception.Message)
+            }
+            try {
+                if ($script:NotifyIcon.Icon) {
+                    $script:NotifyIcon.Icon.Dispose()
+                    $script:NotifyIcon.Icon = $null
+                }
+            } catch {
+                Write-Log ("Could not dispose tray image: " + $_.Exception.Message)
+            }
+            try {
+                $script:NotifyIcon.Dispose()
+            } catch {
+                Write-Log ("Could not dispose tray icon: " + $_.Exception.Message)
+            }
+            $script:NotifyIconDisposed = $true
+            $script:NotifyIcon = $null
+        }
+    } catch {
+        Write-Log ("Tray icon cleanup failed: " + $_.Exception.Message)
+    }
+
+    Write-Log 'Application cleanup finished.'
+    if ($RequestApplicationExit) {
+        try {
+            [System.Windows.Forms.Application]::Exit()
+        } catch {
+            Write-Log ("Application exit request failed: " + $_.Exception.Message)
+        }
     }
 }
 
@@ -662,6 +869,9 @@ function Format-UsageSummary {
 }
 
 function Update-Tray {
+    if ($script:IsExiting -or $null -eq $script:NotifyIcon -or $script:NotifyIconDisposed) {
+        return
+    }
     $script:UsageData = Get-UsageData
     $hasData = [bool]$script:UsageData.hasData
     if ($hasData) {
@@ -734,15 +944,23 @@ function Update-Tray {
 }
 
 function Hide-UsageWidget {
+    if ($script:IsExiting) {
+        return
+    }
     if ($script:WidgetForm) {
         $script:WidgetVisible = $false
         $script:WidgetForm.Hide()
     }
-    $script:NotifyIcon.Visible = $true
+    if ($null -ne $script:NotifyIcon -and -not $script:NotifyIconDisposed) {
+        $script:NotifyIcon.Visible = $true
+    }
     Update-Tray
 }
 
 function Show-UsageWidget {
+    if ($script:IsExiting) {
+        return
+    }
     if (-not $script:WidgetForm) {
         $form = New-Object System.Windows.Forms.Form
         $form.Text = 'Codex Usage'
@@ -955,8 +1173,17 @@ function Show-UsageWidget {
         $form.Controls.Add($panel)
         $form.Add_FormClosing({
             param($sender, $eventArgs)
-            $eventArgs.Cancel = $true
-            Hide-UsageWidget
+            try {
+                if ($script:IsExiting) {
+                    $eventArgs.Cancel = $false
+                } else {
+                    $eventArgs.Cancel = $true
+                    Hide-UsageWidget
+                }
+            } catch {
+                Write-Log ("Widget FormClosing failed: " + $_.Exception.Message)
+                $eventArgs.Cancel = $script:IsExiting -eq $false
+            }
         })
 
         $script:WidgetForm = $form
@@ -964,7 +1191,9 @@ function Show-UsageWidget {
     }
 
     Update-Tray
-    $script:NotifyIcon.Visible = $false
+    if ($null -ne $script:NotifyIcon -and -not $script:NotifyIconDisposed) {
+        $script:NotifyIcon.Visible = $false
+    }
     $script:WidgetVisible = $true
     $script:WidgetForm.Show()
     $script:WidgetForm.Activate()
@@ -974,6 +1203,7 @@ Apply-AppSettings
 [System.Windows.Forms.Application]::EnableVisualStyles()
 
 $script:NotifyIcon = New-Object System.Windows.Forms.NotifyIcon
+$script:NotifyIconDisposed = $false
 $script:NotifyIcon.Visible = $true
 
 $menu = New-Object System.Windows.Forms.ContextMenuStrip
@@ -1196,13 +1426,16 @@ $scraperLogItem.Add_Click({
 
 $exitItem = New-Object System.Windows.Forms.ToolStripMenuItem 'Exit'
 $exitItem.Add_Click({
-    Write-Log 'Exiting tray app.'
-    $script:NotifyIcon.Visible = $false
-    if ($script:NotifyIcon.Icon) {
-        $script:NotifyIcon.Icon.Dispose()
+    try {
+        Write-Log 'Exit selected from menu.'
+        Invoke-AppCleanup -RequestApplicationExit
+    } catch {
+        Write-Log ("Exit menu cleanup failed: " + $_.Exception.Message)
+        try {
+            [System.Windows.Forms.Application]::Exit()
+        } catch {
+        }
     }
-    $script:NotifyIcon.Dispose()
-    [System.Windows.Forms.Application]::Exit()
 })
 
 [void]$menu.Items.Add($script:SummaryItem)
@@ -1224,6 +1457,13 @@ $exitItem.Add_Click({
 
 $script:NotifyIcon.ContextMenuStrip = $menu
 $script:SharedMenu = $menu
+[System.Windows.Forms.Application]::add_ApplicationExit({
+    try {
+        Invoke-AppCleanup
+    } catch {
+        Write-Log ("ApplicationExit cleanup failed: " + $_.Exception.Message)
+    }
+})
 $script:NotifyIcon.Add_DoubleClick({
     try {
         Show-UsageWidget
@@ -1240,19 +1480,19 @@ try {
     $script:NotifyIcon.BalloonTipText = Format-UsageSummary $script:UsageData
     $script:NotifyIcon.ShowBalloonTip(5000)
     Write-Log 'Tray app is running.'
-    $timer = New-Object System.Windows.Forms.Timer
-    $timer.Interval = 60000
-    $timer.Add_Tick({
+    $script:RefreshTimer = New-Object System.Windows.Forms.Timer
+    $script:RefreshTimer.Interval = 60000
+    $script:RefreshTimer.Add_Tick({
         try {
             Update-Tray
         } catch {
             Write-Log ("Timer refresh failed: " + $_.Exception.Message)
         }
     })
-    $timer.Start()
-    $blinkTimer = New-Object System.Windows.Forms.Timer
-    $blinkTimer.Interval = 700
-    $blinkTimer.Add_Tick({
+    $script:RefreshTimer.Start()
+    $script:BlinkTimer = New-Object System.Windows.Forms.Timer
+    $script:BlinkTimer.Interval = 700
+    $script:BlinkTimer.Add_Tick({
         try {
             if ($script:UsageData -and $script:AckData -and (Test-ZeroAlertActive $script:UsageData $script:AckData)) {
                 $script:BlinkOn = -not $script:BlinkOn
@@ -1266,10 +1506,14 @@ try {
             Write-Log ("Blink refresh failed: " + $_.Exception.Message)
         }
     })
-    $blinkTimer.Start()
+    $script:BlinkTimer.Start()
     [System.Windows.Forms.Application]::Run()
+    Invoke-AppCleanup
 } catch {
     Write-Log ("Fatal error: " + $_.Exception.Message)
     Write-Log $_.ScriptStackTrace
-    throw
+    try {
+        Invoke-AppCleanup -RequestApplicationExit
+    } catch {
+    }
 }
