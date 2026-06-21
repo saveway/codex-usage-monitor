@@ -33,7 +33,7 @@ jobs:
         shell: pwsh
         run: |
           $env:PLAYWRIGHT_BROWSERS_PATH = Join-Path $PWD "playwright-browsers"
-          python -m playwright install chromium
+          python -m playwright install chromium --no-shell
 
       - name: Build scraper executable
         shell: pwsh
@@ -113,19 +113,19 @@ jobs:
       - name: Create ZIP and SHA256
         shell: pwsh
         run: |
-          $zip = Join-Path $PWD "CodexUsageMonitor-windows.zip"
+          $zip = Join-Path $PWD "CodexUsageMonitor-windows-full.zip"
           Compress-Archive -Path "release-package\*" -DestinationPath $zip -CompressionLevel Optimal
           $hash = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
-          "$hash  CodexUsageMonitor-windows.zip" | Set-Content -LiteralPath "CodexUsageMonitor-windows.zip.sha256" -Encoding ASCII
-          Get-Content -LiteralPath "CodexUsageMonitor-windows.zip.sha256"
+          "$hash  CodexUsageMonitor-windows-full.zip" | Set-Content -LiteralPath "CodexUsageMonitor-windows-full.zip.sha256" -Encoding ASCII
+          Get-Content -LiteralPath "CodexUsageMonitor-windows-full.zip.sha256"
 
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
         with:
-          name: CodexUsageMonitor-windows
+          name: CodexUsageMonitor-windows-full
           path: |
-            CodexUsageMonitor-windows.zip
-            CodexUsageMonitor-windows.zip.sha256
+            CodexUsageMonitor-windows-full.zip
+            CodexUsageMonitor-windows-full.zip.sha256
           if-no-files-found: error
 
       - name: Publish tagged GitHub Release
@@ -133,8 +133,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            CodexUsageMonitor-windows.zip
-            CodexUsageMonitor-windows.zip.sha256
+            CodexUsageMonitor-windows-full.zip
+            CodexUsageMonitor-windows-full.zip.sha256
           generate_release_notes: true
           body: |
             ## Windows distribution notice

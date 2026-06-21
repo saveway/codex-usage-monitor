@@ -314,6 +314,7 @@ def collect_once(
         context = playwright.chromium.launch_persistent_context(
             user_data_dir=str(PROFILE_DIR),
             headless=headless,
+            channel="chromium",
             viewport={"width": 1280, "height": 900},
             locale="ko-KR",
         )
