@@ -28,6 +28,22 @@ Please understand the following before using the program.
 
 The `browser-profile/` may contain a live login session. Never upload or share this directory through GitHub, messaging, bug reports, or any other channel.
 
+## Screenshots
+
+These public screenshots use example values and contain no real account data.
+
+### Rings Widget
+
+![Rings widget displaying example usage values](docs/images/widget-rings.png)
+
+### Tray and Widget Context Menu
+
+![Context menu shared by the tray icon and widget](docs/images/tray-menu.png)
+
+### Graph Style Selection
+
+![Graph style menu with Rings, Bars, Meters, and Battery](docs/images/graph-style-menu.png)
+
 ## Requirements
 
 - Windows 10 or Windows 11
