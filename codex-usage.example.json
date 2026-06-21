@@ -1,0 +1,12 @@
+{
+  "fiveHourRemaining": 75,
+  "fiveHourReset": "6:00 PM reset",
+  "fiveHourResetAt": "2030-01-01 18:00:00",
+  "weeklyRemaining": 60,
+  "weeklyReset": "2030-01-07 9:00 AM reset",
+  "weeklyResetAt": "2030-01-07 09:00:00",
+  "creditsRemaining": 0,
+  "updatedAt": "2030-01-01 12:00:00",
+  "source": "https://chatgpt.com/codex/cloud/settings/analytics#usage",
+  "status": "ok"
+}

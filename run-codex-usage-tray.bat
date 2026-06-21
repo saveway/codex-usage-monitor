@@ -1,0 +1,10 @@
+@echo off
+set "SCRIPT_DIR=%~dp0"
+set "RUNTIME_DIR=%LOCALAPPDATA%\CodexUsageMonitor"
+if not exist "%RUNTIME_DIR%" mkdir "%RUNTIME_DIR%"
+set "LOG_FILE=%RUNTIME_DIR%\codex-usage-tray.log"
+set "SCRAPER_LOG=%RUNTIME_DIR%\codex-usage-scraper.log"
+echo [%date% %time%] Launching Codex usage tray...>>"%LOG_FILE%"
+echo [%date% %time%] Launching Codex usage scraper...>>"%SCRAPER_LOG%"
+start "" /b pythonw.exe "%SCRIPT_DIR%codex-usage-scraper.py"
+start "" powershell.exe -NoProfile -ExecutionPolicy Bypass -STA -WindowStyle Hidden -File "%SCRIPT_DIR%codex-usage-tray.ps1"

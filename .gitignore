@@ -1,0 +1,39 @@
+# Runtime data and browser sessions
+CodexUsageMonitor/
+browser-profile/
+codex-usage-browser-profile/
+codex-usage-scraper.lock
+codex-usage-scraper.pid
+
+# Logs, captures, and local configuration
+*.log
+*page-text*.txt
+codex-usage*.json
+!codex-usage.example.json
+!codex-usage-settings.example.json
+*.tmp
+*.bak
+*.har
+storage-state*.json
+*.trace.zip
+*.webm
+*.png
+*.jpg
+*.jpeg
+.env
+.env.*
+
+# Python and build output
+**/__pycache__/
+.pytest_cache/
+playwright-report/
+test-results/
+dist/
+build/
+*.spec
+
+# Editor and OS noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
