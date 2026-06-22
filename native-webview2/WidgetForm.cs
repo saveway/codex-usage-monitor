@@ -241,7 +241,8 @@ namespace CodexUsageMonitorV2
                 var groupCenterX = CenterX(meterGroup);
                 var fiveHourTextTop = 86f;
                 var weeklyTextTop = 101f;
-                var iconAnchor = new PointF(groupCenterX, (meterGroup.Bottom + fiveHourTextTop) / 2f);
+                var visibleMeterBounds = CalculateVisibleMeterBounds(fiveHourMeter, weeklyMeter, fiveHour, weekly);
+                var iconAnchor = new PointF(groupCenterX, (visibleMeterBounds.Bottom + fiveHourTextTop) / 2f);
                 DrawMeter(g, fiveHourMeter, fiveHour, palette.GetFiveHourColor(fiveHour));
                 DrawMeter(g, weeklyMeter, weekly, palette.GetWeeklyColor(weekly));
                 g.FillEllipse(centerBrush, iconAnchor.X - 11, iconAnchor.Y - 11, 22, 22);
@@ -438,6 +439,21 @@ namespace CodexUsageMonitorV2
                     center.Y + (float)Math.Sin(angle) * length);
                 g.DrawLine(needlePen, center, end);
                 g.FillEllipse(hubBrush, center.X - 2.5f, center.Y - 2.5f, 5, 5);
+            }
+        }
+
+        private RectangleF CalculateVisibleMeterBounds(RectangleF fiveHourBounds, RectangleF weeklyBounds, int fiveHour, int weekly)
+        {
+            using (var bitmap = new Bitmap(LogicalSize, LogicalSize))
+            using (var g = Graphics.FromImage(bitmap))
+            {
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+                g.Clear(Color.Transparent);
+                DrawMeter(g, fiveHourBounds, fiveHour, palette.GetFiveHourColor(fiveHour));
+                DrawMeter(g, weeklyBounds, weekly, palette.GetWeeklyColor(weekly));
+                return CalculateVisibleBounds(bitmap);
             }
         }
 
