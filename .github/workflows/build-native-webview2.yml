@@ -177,17 +177,18 @@ jobs:
           body: |
             ## WebView2 Native Preview
 
-            ### What's new in preview.5
+            ### What's new in preview.6
 
-            - Graph style menu with Rings, Bars, Meters, and Battery widget rendering.
-            - Widget `graphStyle` setting is saved and restored on restart.
-            - Double-clicking the tray icon now shows or activates the widget instead of opening the usage page.
-            - `Open/Login usage page` remains available from the tray and widget right-click menus.
-            - Removed widget style labels such as `Codex`, `Bars`, `Meters`, and `Battery`.
-            - The `C>` mark is centered consistently across all widget graph styles and sizes.
+            - General Codex 5-hour reset text, weekly reset text, and remaining credits are parsed from the usage page.
+            - The tray tooltip keeps a compact reset/credits format such as `R06-23 00:52/06-29 14:52|C0`.
+            - The 256x256 widget shows compact reset information without overlapping the graph.
+            - The 128x128 widget omits the reset/credits helper line to keep the small widget readable.
+            - Credits value `0` is not emphasized in the widget; non-zero credits can be shown compactly on the 256x256 widget.
+            - Rings, Bars, Meters, and Battery widget styles remain available.
+            - Widget `graphStyle` setting is still saved and restored on restart.
             - General Codex limits and GPT-5.3-Codex-Spark limits remain parsed into separate fields.
             - Tooltip and widget `5h` / `W` values continue to mean the general Codex limits.
-            - Color settings, dynamic tray icon rendering, and opt-in Auto refresh remain available.
+            - Color settings, dynamic tray icon rendering, tray double-click widget activation, Open/Login menu flow, and opt-in Auto refresh remain available.
             - Login and session data remain local in `%LOCALAPPDATA%\CodexUsageMonitorV2`.
             - This is still a preview; no installer, startup registration, or code signing is included yet.
 
