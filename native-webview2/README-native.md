@@ -82,7 +82,7 @@ https://developer.microsoft.com/microsoft-edge/webview2/
 
 ## GitHub Actions artifact
 
-The separate `Build native WebView2 prototype` workflow is manual-only (`workflow_dispatch`). It builds this project on `windows-latest`, audits both the clean staging directory and the finished ZIP, and uploads an artifact named `CodexUsageMonitor-windows-webview2`.
+The separate `Build native WebView2 prototype` workflow supports manual `workflow_dispatch` builds and `v2.*-preview.*` tag builds. It builds this project on `windows-latest`, audits both the clean staging directory and the finished ZIP, and uploads an artifact named `CodexUsageMonitor-windows-webview2`.
 
 GitHub wraps artifacts in a download container. After downloading and opening that outer artifact ZIP, use:
 
@@ -103,7 +103,7 @@ LICENSE
 runtimes\win-x64\native\WebView2Loader.dll
 ```
 
-Extract the entire inner ZIP and run `CodexUsageMonitorV2.exe`. Do not move the EXE away from its DLLs and `runtimes` directory. The package does not include Edge/Chromium; the target PC must have Microsoft Edge WebView2 Evergreen Runtime. The workflow does not publish a GitHub Release or attach files to a tag.
+Extract the entire inner ZIP and run `CodexUsageMonitorV2.exe`. Do not move the EXE away from its DLLs and `runtimes` directory. The package does not include Edge/Chromium; the target PC must have Microsoft Edge WebView2 Evergreen Runtime. Manual workflow runs create an Actions artifact only. A matching `v2.*-preview.*` tag creates a GitHub prerelease and attaches the inner ZIP and SHA256 file; it does not alter v1 releases.
 
 The inner ZIP is approximately 0.3 MiB because it contains only the compressed application and WebView2 loader libraries. Microsoft Edge WebView2 Runtime provides the browser engine separately and is not bundled. Extracted files are approximately 0.9 MiB; the installed WebView2 Runtime and local user profile are separate from these package sizes.
 
@@ -171,7 +171,7 @@ V2 remains a prototype and is distributed only as a manually built Actions artif
 - Widget UI and graph styles.
 - Automatic periodic collection.
 - Credits and reset-time parsing.
-- Installer, Windows startup registration, code signing, tagged Release publishing, and automatic Release attachment.
+- Installer, Windows startup registration, code signing, stable v2 Release publishing, and non-preview Release attachment.
 - Localization and polished icons.
 - Automated end-to-end testing against an authenticated account; authenticated validation is currently an explicit manual test.
 - Resilience against future ChatGPT wording, localization, routing, or DOM changes beyond the current text parser.

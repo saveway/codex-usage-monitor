@@ -2,9 +2,12 @@ name: Build native WebView2 prototype
 
 on:
   workflow_dispatch:
+  push:
+    tags:
+      - "v2.*-preview.*"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-native-webview2:
@@ -159,3 +162,26 @@ jobs:
             CodexUsageMonitorV2-windows-webview2.zip
             CodexUsageMonitorV2-windows-webview2.zip.sha256
           if-no-files-found: error
+
+      - name: Publish WebView2 preview prerelease
+        if: startsWith(github.ref, 'refs/tags/v2.') && contains(github.ref, '-preview.')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Codex Usage Monitor ${{ github.ref_name }} WebView2 Native Preview
+          prerelease: true
+          make_latest: false
+          fail_on_unmatched_files: true
+          files: |
+            CodexUsageMonitorV2-windows-webview2.zip
+            CodexUsageMonitorV2-windows-webview2.zip.sha256
+          body: |
+            ## WebView2 Native Preview
+
+            - Python, Playwright, and Chromium are not bundled.
+            - Microsoft Edge WebView2 Runtime is required.
+            - This preview uses manual `Fetch now` collection.
+            - Automatic periodic collection, widget UI, and an installer are not included yet.
+            - This preview does not replace the established v1 Full/Lite releases.
+            - Usage data, logs, and the browser login session are stored locally in `%LOCALAPPDATA%\CodexUsageMonitorV2`.
+
+            This is an unofficial preview and is not an official OpenAI application. The executable is unsigned, so Windows SmartScreen may display a warning.
