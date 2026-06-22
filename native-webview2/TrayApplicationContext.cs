@@ -734,10 +734,7 @@ namespace CodexUsageMonitorV2
 
         private static string BuildAlertKey(string prefix, string resetText)
         {
-            var compactReset = UsageParser.CompactResetText(resetText);
-            var resetKey = string.IsNullOrWhiteSpace(compactReset)
-                ? NormalizeAlertKeyPart(resetText)
-                : compactReset;
+            var resetKey = NormalizeAlertKeyPart(resetText);
             if (string.IsNullOrWhiteSpace(resetKey))
             {
                 resetKey = "no-reset";
@@ -751,7 +748,7 @@ namespace CodexUsageMonitorV2
             {
                 return string.Empty;
             }
-            return value.Trim().Replace(" ", string.Empty).Replace("\t", string.Empty).Replace("\r", string.Empty).Replace("\n", string.Empty);
+            return System.Text.RegularExpressions.Regex.Replace(value.Trim(), @"\s+", " ");
         }
 
         private static string FormatFiveHourRemaining(string resetText)
