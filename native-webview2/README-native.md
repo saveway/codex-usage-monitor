@@ -1,6 +1,6 @@
 # Codex Usage Monitor V2 - WebView2 native preview
 
-This folder contains a release-candidate preview of a small native Windows version. It is usable for manual tray-based collection, but it does not replace the established v1 Full/Lite distributions. V1 source, releases, tags, and release workflow remain independent.
+This folder contains a release-candidate preview of a small native Windows version. It supports tray-based manual collection and opt-in automatic refresh, but it does not replace the established v1 Full/Lite distributions. V1 source, releases, tags, and release workflow remain independent.
 
 ## Preview status
 
@@ -19,7 +19,7 @@ Using .NET Framework 4.8 is practical for this prototype and keeps the app binar
 ## Current features
 
 - A self-designed teal gauge icon is embedded in the EXE and used by the tray and app windows. It does not use an OpenAI, ChatGPT, or Codex logo or trademark artwork.
-- This document describes the `v2.0.0-preview.2` prerelease, which adds optional Auto refresh to the WebView2 Native Preview line.
+- This document describes the `v2.0.0-preview.2` prerelease, which adds optional Auto refresh to the WebView2 Native Preview line. The current executable's About dialog and file metadata still display the earlier internal version `v2.0.0-preview.1`; the GitHub tag and package version are `v2.0.0-preview.2`.
 - Notification-area icon with `Open/Login usage page`, `Fetch now`, `Reload saved data`, `Open data file`, `Open log`, `Clear WebView2 cache`, and `Exit`.
 - An `Auto refresh` submenu offers `Off`, `10 minutes`, `15 minutes`, `30 minutes`, and `60 minutes`. It is Off by default and never offers an interval shorter than 10 minutes.
 - An `About` menu opens app name, preview version, unofficial status, dependency summary, local data location, and GitHub repository information.
