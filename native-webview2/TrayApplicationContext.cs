@@ -71,7 +71,7 @@ namespace CodexUsageMonitorV2
                 ContextMenuStrip = menu,
                 Visible = true
             };
-            notifyIcon.DoubleClick += async (sender, args) => await OpenBrowserAsync(false, false);
+            notifyIcon.DoubleClick += (sender, args) => ShowWidget(false);
 
             autoRefreshTimer = new Timer();
             autoRefreshTimer.Tick += HandleAutoRefreshTick;

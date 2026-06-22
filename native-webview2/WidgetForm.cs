@@ -174,20 +174,17 @@ namespace CodexUsageMonitorV2
             using (var weeklyPen = CreateRoundPen(palette.GetWeeklyColor(weekly), 7f))
             using (var centerBrush = new SolidBrush(palette.GetColor("CenterFill")))
             using (var textBrush = new SolidBrush(palette.GetColor("Text")))
-            using (var mutedBrush = new SolidBrush(palette.GetColor("MutedText")))
             using (var closeBrush = new SolidBrush(palette.GetColor("Close")))
             using (var fontSmall = new Font("Segoe UI", 7.5f, FontStyle.Bold))
-            using (var fontTiny = new Font("Segoe UI", 6.5f))
             {
-                g.DrawArc(trackPen, 25, 4, 78, 78, -90, 360);
-                g.DrawArc(fiveHourPen, 25, 4, 78, 78, -90, fiveHour * 3.6f);
-                g.DrawArc(trackPen, 41, 20, 46, 46, -90, 360);
-                g.DrawArc(weeklyPen, 41, 20, 46, 46, -90, weekly * 3.6f);
-                g.FillEllipse(centerBrush, 53, 33, 22, 22);
-                DrawCodexMark(g, 64, 44, 8f);
-                g.DrawString("5h " + fiveHour + "%", fontSmall, textBrush, 8, 84);
-                g.DrawString("W " + weekly + "%", fontSmall, textBrush, 72, 84);
-                g.DrawString("Codex", fontTiny, mutedBrush, 47, 106);
+                g.DrawArc(trackPen, 25, 25, 78, 78, -90, 360);
+                g.DrawArc(fiveHourPen, 25, 25, 78, 78, -90, fiveHour * 3.6f);
+                g.DrawArc(trackPen, 41, 41, 46, 46, -90, 360);
+                g.DrawArc(weeklyPen, 41, 41, 46, 46, -90, weekly * 3.6f);
+                g.FillEllipse(centerBrush, 53, 53, 22, 22);
+                DrawCodexMark(g, 64, 64, 8f);
+                g.DrawString("5h " + fiveHour + "%", fontSmall, textBrush, 8, 106);
+                g.DrawString("W " + weekly + "%", fontSmall, textBrush, 72, 106);
                 g.DrawString("x", fontSmall, closeBrush, 113, 3);
             }
         }
@@ -197,20 +194,19 @@ namespace CodexUsageMonitorV2
             var fiveHour = Clamp(snapshot.fiveHourRemaining);
             var weekly = Clamp(snapshot.weeklyRemaining);
             using (var textBrush = new SolidBrush(palette.GetColor("Text")))
-            using (var mutedBrush = new SolidBrush(palette.GetColor("MutedText")))
             using (var closeBrush = new SolidBrush(palette.GetColor("Close")))
             using (var trackBrush = new SolidBrush(palette.GetColor("Track")))
             using (var fiveHourBrush = new SolidBrush(palette.GetFiveHourColor(fiveHour)))
             using (var weeklyBrush = new SolidBrush(palette.GetWeeklyColor(weekly)))
             using (var font = new Font("Segoe UI", 8f, FontStyle.Bold))
-            using (var tiny = new Font("Segoe UI", 6.5f))
+            using (var centerBrush = new SolidBrush(palette.GetColor("CenterFill")))
             {
-                DrawCodexMark(g, 64, 20, 8f);
-                DrawProgressBar(g, trackBrush, fiveHourBrush, 18, 39, 92, 16, fiveHour);
-                DrawProgressBar(g, trackBrush, weeklyBrush, 18, 70, 92, 16, weekly);
-                g.DrawString("5h " + fiveHour + "%", font, textBrush, 18, 24);
-                g.DrawString("W " + weekly + "%", font, textBrush, 18, 55);
-                g.DrawString("Bars", tiny, mutedBrush, 54, 102);
+                DrawProgressBar(g, trackBrush, fiveHourBrush, 18, 30, 92, 16, fiveHour);
+                DrawProgressBar(g, trackBrush, weeklyBrush, 18, 92, 92, 16, weekly);
+                g.FillEllipse(centerBrush, 53, 53, 22, 22);
+                DrawCodexMark(g, 64, 64, 8f);
+                g.DrawString("5h " + fiveHour + "%", font, textBrush, 18, 15);
+                g.DrawString("W " + weekly + "%", font, textBrush, 18, 77);
                 g.DrawString("x", font, closeBrush, 113, 3);
             }
         }
@@ -220,17 +216,16 @@ namespace CodexUsageMonitorV2
             var fiveHour = Clamp(snapshot.fiveHourRemaining);
             var weekly = Clamp(snapshot.weeklyRemaining);
             using (var textBrush = new SolidBrush(palette.GetColor("Text")))
-            using (var mutedBrush = new SolidBrush(palette.GetColor("MutedText")))
             using (var closeBrush = new SolidBrush(palette.GetColor("Close")))
             using (var font = new Font("Segoe UI", 7.5f, FontStyle.Bold))
-            using (var tiny = new Font("Segoe UI", 6.5f))
+            using (var centerBrush = new SolidBrush(palette.GetColor("CenterFill")))
             {
                 DrawMeter(g, new RectangleF(14, 22, 44, 34), fiveHour, palette.GetFiveHourColor(fiveHour));
                 DrawMeter(g, new RectangleF(70, 22, 44, 34), weekly, palette.GetWeeklyColor(weekly));
-                DrawCodexMark(g, 64, 71, 8f);
+                g.FillEllipse(centerBrush, 53, 53, 22, 22);
+                DrawCodexMark(g, 64, 64, 8f);
                 g.DrawString("5h " + fiveHour + "%", font, textBrush, 12, 84);
                 g.DrawString("W " + weekly + "%", font, textBrush, 72, 84);
-                g.DrawString("Meters", tiny, mutedBrush, 48, 106);
                 g.DrawString("x", font, closeBrush, 113, 3);
             }
         }
@@ -240,21 +235,20 @@ namespace CodexUsageMonitorV2
             var fiveHour = Clamp(snapshot.fiveHourRemaining);
             var weekly = Clamp(snapshot.weeklyRemaining);
             using (var textBrush = new SolidBrush(palette.GetColor("Text")))
-            using (var mutedBrush = new SolidBrush(palette.GetColor("MutedText")))
             using (var closeBrush = new SolidBrush(palette.GetColor("Close")))
             using (var outlinePen = new Pen(palette.GetColor("BatteryOutline"), 2f))
             using (var trackBrush = new SolidBrush(palette.GetColor("Track")))
             using (var fiveHourBrush = new SolidBrush(palette.GetFiveHourColor(fiveHour)))
             using (var weeklyBrush = new SolidBrush(palette.GetWeeklyColor(weekly)))
             using (var font = new Font("Segoe UI", 7.5f, FontStyle.Bold))
-            using (var tiny = new Font("Segoe UI", 6.5f))
+            using (var centerBrush = new SolidBrush(palette.GetColor("CenterFill")))
             {
-                DrawBattery(g, outlinePen, trackBrush, fiveHourBrush, 18, 35, 88, 18, fiveHour);
-                DrawBattery(g, outlinePen, trackBrush, weeklyBrush, 18, 70, 88, 18, weekly);
-                g.DrawString("5h " + fiveHour + "%", font, textBrush, 18, 19);
-                g.DrawString("W " + weekly + "%", font, textBrush, 18, 54);
-                g.DrawString("Battery", tiny, mutedBrush, 47, 106);
-                DrawCodexMark(g, 64, 100, 7f);
+                DrawBattery(g, outlinePen, trackBrush, fiveHourBrush, 18, 34, 88, 18, fiveHour);
+                DrawBattery(g, outlinePen, trackBrush, weeklyBrush, 18, 92, 88, 18, weekly);
+                g.FillEllipse(centerBrush, 53, 53, 22, 22);
+                DrawCodexMark(g, 64, 64, 8f);
+                g.DrawString("5h " + fiveHour + "%", font, textBrush, 18, 18);
+                g.DrawString("W " + weekly + "%", font, textBrush, 18, 76);
                 g.DrawString("x", font, closeBrush, 113, 3);
             }
         }
