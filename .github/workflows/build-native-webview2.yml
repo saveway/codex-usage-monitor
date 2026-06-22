@@ -177,20 +177,22 @@ jobs:
           body: |
             ## WebView2 Native Preview
 
-            ### What's new in preview.6
+            ### What's new in preview.7
 
-            - General Codex 5-hour reset text, weekly reset text, and remaining credits are parsed from the usage page.
-            - The tray tooltip keeps a compact reset/credits format such as `R06-23 00:52/06-29 14:52|C0`.
-            - The 256x256 widget shows compact reset information without overlapping the graph.
-            - The 128x128 widget omits the reset/credits helper line to keep the small widget readable.
-            - Credits value `0` is not emphasized in the widget; non-zero credits can be shown compactly on the 256x256 widget.
-            - Rings, Bars, Meters, and Battery widget styles remain available.
-            - Widget `graphStyle` setting is still saved and restored on restart.
-            - General Codex limits and GPT-5.3-Codex-Spark limits remain parsed into separate fields.
-            - Tooltip and widget `5h` / `W` values continue to mean the general Codex limits.
-            - Color settings, dynamic tray icon rendering, tray double-click widget activation, Open/Login menu flow, and opt-in Auto refresh remain available.
-            - Login and session data remain local in `%LOCALAPPDATA%\CodexUsageMonitorV2`.
-            - This is still a preview; no installer, startup registration, or code signing is included yet.
+            - Meters needle angles now point to the same percentage positions as the rendered meter arcs.
+            - Widget reset remaining text is unified across 128x128 and 256x256 sizes as `5H XX% / aa시bb분` and `W YY% / cc일dd시`.
+            - One-digit hours, minutes, days, and weekly hours are zero-padded, for example `01시05분` and `03일04시`.
+            - Reset text alignment and graph center alignment were refined across Rings, Bars, Meters, and Battery styles.
+            - The widget center mark now uses the locally installed Codex.exe icon when available, with text fallback only if the icon cannot be found.
+            - Rings layout was adjusted so rings, icon, and reset text do not overlap.
+            - Bars and Battery logo vertical positioning were balanced between the upper graph and lower text.
+            - Meters logo positioning now uses the actual visible meter pixel bounds instead of logical arc bounds.
+            - Zero Alert notifications were added for general Codex 5H/W 100% states.
+            - `Acknowledge current alert` was added to persist acknowledgement for the current reset window.
+            - Alert keys now preserve normalized reset strings so weekly keys are not truncated, for example not `W:2026.`.
+            - Spark 100% values remain separated from general Codex 5H/W alert decisions.
+            - All widget styles were regression-tested at 128x128 and 256x256, including 100% critical-color states.
+            - Build, ZIP-content, SHA256, alert, acknowledgement, and UI regression checks passed before this prerelease.
 
             ### Runtime and privacy
 
