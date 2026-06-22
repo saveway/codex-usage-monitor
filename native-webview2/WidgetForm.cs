@@ -146,7 +146,7 @@ namespace CodexUsageMonitorV2
             using (var titleFont = new Font("Segoe UI", 9f, FontStyle.Bold))
             using (var bodyFont = new Font("Segoe UI", 7f))
             {
-                DrawCodexMark(g, LogicalCenterX(), 36, GetLogicalIconSize());
+                DrawCodexMark(g, LogicalCenterX(), 36, GetLogicalIconSize(WidgetGraphStyle.Rings));
                 g.DrawString("No data yet", titleFont, textBrush, 28, 58);
                 g.DrawString("Login or Fetch now", bodyFont, mutedBrush, 22, 78);
                 g.DrawString("required", bodyFont, mutedBrush, 45, 92);
@@ -193,7 +193,7 @@ namespace CodexUsageMonitorV2
                 g.DrawArc(trackPen, innerRing, -90, 360);
                 g.DrawArc(weeklyPen, innerRing, -90, weekly * 3.6f);
                 g.FillEllipse(centerBrush, ringCenter.X - 11, ringCenter.Y - 11, 22, 22);
-                DrawCodexMark(g, ringCenter.X, ringCenter.Y, GetLogicalIconSize());
+                DrawCodexMark(g, ringCenter.X, ringCenter.Y, GetLogicalIconSize(WidgetGraphStyle.Rings));
                 DrawUsageLines(g, textBrush, fontSmall, ringCenter.X, 91, 105, 4, 124);
                 g.DrawString("x", fontSmall, closeBrush, 113, 3);
             }
@@ -213,14 +213,15 @@ namespace CodexUsageMonitorV2
             {
                 var fiveHourBar = new Rectangle(18, 30, 92, 16);
                 var weeklyBar = new Rectangle(18, 92, 92, 16);
+                var weeklyTextTop = 76f;
                 var widgetCenterX = LogicalCenterX();
                 DrawProgressBar(g, trackBrush, fiveHourBrush, fiveHourBar, fiveHour);
                 DrawProgressBar(g, trackBrush, weeklyBrush, weeklyBar, weekly);
-                var iconAnchor = new PointF(widgetCenterX, (fiveHourBar.Bottom + weeklyBar.Top) / 2f);
+                var iconAnchor = new PointF(widgetCenterX, (fiveHourBar.Bottom + weeklyTextTop) / 2f);
                 g.FillEllipse(centerBrush, iconAnchor.X - 11, iconAnchor.Y - 11, 22, 22);
-                DrawCodexMark(g, iconAnchor.X, iconAnchor.Y, GetLogicalIconSize());
+                DrawCodexMark(g, iconAnchor.X, iconAnchor.Y, GetLogicalIconSize(WidgetGraphStyle.Bars));
                 DrawUsageTextLine(g, BuildFiveHourLine(fiveHour), font, textBrush, CenterX(fiveHourBar), 14, 6, 122);
-                DrawUsageTextLine(g, BuildWeeklyLine(weekly), font, textBrush, CenterX(weeklyBar), 76, 6, 122);
+                DrawUsageTextLine(g, BuildWeeklyLine(weekly), font, textBrush, CenterX(weeklyBar), weeklyTextTop, 6, 122);
                 g.DrawString("x", font, closeBrush, 113, 3);
             }
         }
@@ -238,12 +239,14 @@ namespace CodexUsageMonitorV2
                 var weeklyMeter = new RectangleF(70, 22, 44, 34);
                 var meterGroup = Union(fiveHourMeter, weeklyMeter);
                 var groupCenterX = CenterX(meterGroup);
-                var iconAnchor = new PointF(groupCenterX, (meterGroup.Bottom + 76f) / 2f);
+                var fiveHourTextTop = 86f;
+                var weeklyTextTop = 101f;
+                var iconAnchor = new PointF(groupCenterX, (meterGroup.Bottom + fiveHourTextTop) / 2f);
                 DrawMeter(g, fiveHourMeter, fiveHour, palette.GetFiveHourColor(fiveHour));
                 DrawMeter(g, weeklyMeter, weekly, palette.GetWeeklyColor(weekly));
                 g.FillEllipse(centerBrush, iconAnchor.X - 11, iconAnchor.Y - 11, 22, 22);
-                DrawCodexMark(g, iconAnchor.X, iconAnchor.Y, GetLogicalIconSize());
-                DrawUsageLines(g, textBrush, font, groupCenterX, 76, 91, 4, 124);
+                DrawCodexMark(g, iconAnchor.X, iconAnchor.Y, GetLogicalIconSize(WidgetGraphStyle.Meters));
+                DrawUsageLines(g, textBrush, font, groupCenterX, fiveHourTextTop, weeklyTextTop, 4, 124);
                 g.DrawString("x", font, closeBrush, 113, 3);
             }
         }
@@ -261,16 +264,18 @@ namespace CodexUsageMonitorV2
             using (var font = new Font("Segoe UI", 7.5f, FontStyle.Bold))
             using (var centerBrush = new SolidBrush(palette.GetColor("CenterFill")))
             {
-                var fiveHourBody = new Rectangle(18, 34, 88, 18);
+                var fiveHourBody = new Rectangle(18, 30, 88, 18);
                 var weeklyBody = new Rectangle(18, 92, 88, 18);
+                var fiveHourTextTop = 14f;
+                var weeklyTextTop = 76f;
                 var bodyCenterX = CenterX(fiveHourBody);
-                var iconAnchor = new PointF(bodyCenterX, (fiveHourBody.Bottom + weeklyBody.Top) / 2f);
+                var iconAnchor = new PointF(bodyCenterX, (fiveHourBody.Bottom + weeklyTextTop) / 2f);
                 DrawBattery(g, outlinePen, trackBrush, fiveHourBrush, fiveHourBody, fiveHour);
                 DrawBattery(g, outlinePen, trackBrush, weeklyBrush, weeklyBody, weekly);
                 g.FillEllipse(centerBrush, iconAnchor.X - 11, iconAnchor.Y - 11, 22, 22);
-                DrawCodexMark(g, iconAnchor.X, iconAnchor.Y, GetLogicalIconSize());
-                DrawUsageTextLine(g, BuildFiveHourLine(fiveHour), font, textBrush, bodyCenterX, 18, 6, 118);
-                DrawUsageTextLine(g, BuildWeeklyLine(weekly), font, textBrush, CenterX(weeklyBody), 76, 6, 118);
+                DrawCodexMark(g, iconAnchor.X, iconAnchor.Y, GetLogicalIconSize(WidgetGraphStyle.Battery));
+                DrawUsageTextLine(g, BuildFiveHourLine(fiveHour), font, textBrush, bodyCenterX, fiveHourTextTop, 6, 118);
+                DrawUsageTextLine(g, BuildWeeklyLine(weekly), font, textBrush, CenterX(weeklyBody), weeklyTextTop, 6, 118);
                 g.DrawString("x", font, closeBrush, 113, 3);
             }
         }
@@ -455,8 +460,16 @@ namespace CodexUsageMonitorV2
             return LogicalSize / 2f;
         }
 
-        private float GetLogicalIconSize()
+        private float GetLogicalIconSize(WidgetGraphStyle style)
         {
+            if (style == WidgetGraphStyle.Battery)
+            {
+                return 17f;
+            }
+            if (style == WidgetGraphStyle.Bars || style == WidgetGraphStyle.Meters)
+            {
+                return 18f;
+            }
             return logicalWidgetSize == 256 ? 19f : 26f;
         }
 
