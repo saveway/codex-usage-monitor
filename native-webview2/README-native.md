@@ -4,7 +4,7 @@ This folder contains a release-candidate preview of a small native Windows versi
 
 ## Preview status
 
-The `v2.0.0-preview.4` preview has been verified with a real visible ChatGPT login, persistent WebView2 session, authenticated usage-page parsing, opt-in automatic refresh, tray menu operation, color settings, dynamic tray icon rendering, a basic Rings widget, cache cleanup, stable exit, and a clean GitHub Actions artifact. It is still labeled **preview** because it has no installer, startup registration, code signing, or broad multi-machine compatibility testing.
+The `v2.0.0-preview.5` preview has been verified with a real visible ChatGPT login, persistent WebView2 session, authenticated usage-page parsing, opt-in automatic refresh, tray menu operation, color settings, dynamic tray icon rendering, Rings/Bars/Meters/Battery widget styles, cache cleanup, stable exit, and a clean GitHub Actions artifact. It is still labeled **preview** because it has no installer, startup registration, code signing, or broad multi-machine compatibility testing.
 
 ## Design decision
 
@@ -19,12 +19,13 @@ Using .NET Framework 4.8 is practical for this prototype and keeps the app binar
 ## Current features
 
 - A self-designed teal gauge icon is embedded in the EXE and used by the tray and app windows. It does not use an OpenAI, ChatGPT, or Codex logo or trademark artwork.
-- This document describes the `v2.0.0-preview.4` prerelease. About and window UI read the assembly informational version generated from the project-level `PreviewVersion`, so the UI and ProductVersion use the same preview version. Windows FileVersion uses the corresponding numeric value `2.0.0.4`.
+- This document describes the `v2.0.0-preview.5` prerelease. About and window UI read the assembly informational version generated from the project-level `PreviewVersion`, so the UI and ProductVersion use the same preview version. Windows FileVersion uses the corresponding numeric value `2.0.0.5`.
 - Notification-area icon with `Open/Login usage page`, `Fetch now`, `Reload saved data`, `Open data file`, `Open log`, `Clear WebView2 cache`, `Show widget`, and `Exit`.
 - A `Colors` menu exposes 21 configurable palette entries, including six five-hour stages, six weekly stages, and nine interface colors. `Reset all colors` restores the defaults.
 - The tray icon dynamically renders the current general Codex 5-hour and weekly remaining percentages with the configured staged colors.
-- A basic transparent, borderless, topmost Rings widget can show the same general Codex 5-hour and weekly values. The outer ring is 5-hour usage and the inner ring is weekly usage.
-- The widget supports drag movement, 128x128 and 256x256 double-click size switching, right-click menu access, and saved visibility, position, and size in `codex-usage-settings.json`.
+- A transparent, borderless, topmost widget can show the same general Codex 5-hour and weekly values with Rings, Bars, Meters, or Battery graph styles. Spark limits are parsed separately and are not mixed into the widget's `5h` and `W` display.
+- The widget supports drag movement, 128x128 and 256x256 double-click size switching, right-click menu access, saved visibility, saved position, saved size, and saved graph style in `codex-usage-settings.json`.
+- Double-clicking the notification-area icon shows or activates the widget. `Open/Login usage page` remains available from the tray or widget right-click menu.
 - An `Auto refresh` submenu offers `Off`, `10 minutes`, `15 minutes`, `30 minutes`, and `60 minutes`. It is Off by default and never offers an interval shorter than 10 minutes.
 - An `About` menu opens app name, preview version, unofficial status, dependency summary, local data location, and GitHub repository information.
 - The tray tooltip shows the last saved 5-hour percentage, weekly percentage, update time, compact status, auto-refresh mode, and next scheduled time. It uses a compact format such as `Codex Usage Monitor V2|5h00% W00%|U06-22/12:34|OK|A10>N12:44` to remain within the Windows tooltip limit.
@@ -180,7 +181,7 @@ Trade-offs:
 
 - Requires .NET Framework 4.8 and Microsoft Edge WebView2 Runtime.
 - DOM text parsing can break when ChatGPT wording or layout changes.
-- This prototype now includes the basic Rings widget and color settings, but it has not yet reproduced v1's alternate graph styles, zero-alert acknowledgement, credits, or reset-time parsing.
+- This prototype now includes color settings and four widget graph styles, but it has not yet reproduced v1's zero-alert acknowledgement, credits, or reset-time parsing.
 - `Fetch now` currently keeps the browser visible by design.
 
 ### Distribution choices
@@ -193,7 +194,6 @@ V2 remains a preview. Manual workflow runs produce an Actions artifact, while ma
 
 ## Unsupported in this preview
 
-- Alternate graph styles beyond the basic Rings widget.
 - Credits and reset-time parsing.
 - Installer, Windows startup registration, code signing, stable v2 Release publishing, and non-preview Release attachment.
 - Localization beyond the current English UI.

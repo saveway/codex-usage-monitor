@@ -4,12 +4,12 @@
 
 ## 권장 선택
 
-- **가볍고 설치가 쉬운 버전을 먼저 시도하려면 [v2.0.0-preview.4 WebView2 Native Preview](https://github.com/saveway/codex-usage-monitor/releases/tag/v2.0.0-preview.4)를 사용하십시오.** 약 0.3MB이며 Python, Playwright, Chromium을 포함하지 않고 Microsoft Edge WebView2 Runtime을 사용합니다. 아직 preview이므로 문제가 있으면 v1 Stable을 사용하십시오.
+- **가볍고 설치가 쉬운 버전을 먼저 시도하려면 [v2.0.0-preview.5 WebView2 Native Preview](https://github.com/saveway/codex-usage-monitor/releases/tag/v2.0.0-preview.5)를 사용하십시오.** 약 0.3MB이며 Python, Playwright, Chromium을 포함하지 않고 Microsoft Edge WebView2 Runtime을 사용합니다. 아직 preview이므로 문제가 있으면 v1 Stable을 사용하십시오.
 - **안정적인 기존 방식이 필요하거나 v2가 동작하지 않으면 [v1.0.1 Stable](https://github.com/saveway/codex-usage-monitor/releases/tag/v1.0.1)을 사용하십시오.** v1 Full은 Chromium을 포함해 용량이 크지만 Python 설치 없이 실행되고, v1 Lite는 작지만 Python과 Playwright 설치가 필요합니다.
 
 v2는 v1을 대체하는 정식 기본 배포가 아닙니다. 자세한 실행·보안·제한사항은 [WebView2 native preview 문서](native-webview2/README-native.md)를 참고하십시오.
 
-v2 Preview는 installer가 아닌 portable ZIP 배포본입니다. 기본 Rings 위젯은 포함되어 있지만 아직 설치 프로그램, 시작프로그램 등록, 코드 서명은 제공하지 않습니다. ZIP 안에서 바로 실행하거나 임시 폴더에서 실행하지 말고, 먼저 계속 사용할 영구 폴더에 전체 압축을 푼 뒤 `CodexUsageMonitorV2.exe`를 실행하십시오. 임시 위치에서 실행하면 재실행, 경로 유지 또는 향후 자동 시작 구성에 문제가 생길 수 있습니다.
+v2 Preview는 installer가 아닌 portable ZIP 배포본입니다. Rings, Bars, Meters, Battery 위젯 그래프는 포함되어 있지만 아직 설치 프로그램, 시작프로그램 등록, 코드 서명은 제공하지 않습니다. ZIP 안에서 바로 실행하거나 임시 폴더에서 실행하지 말고, 먼저 계속 사용할 영구 폴더에 전체 압축을 푼 뒤 `CodexUsageMonitorV2.exe`를 실행하십시오. 임시 위치에서 실행하면 재실행, 경로 유지 또는 향후 자동 시작 구성에 문제가 생길 수 있습니다.
 
 Release 태그는 분리되어 있습니다. v1 Full/Lite workflow는 `v1.*`, v2 preview workflow는 `v2.*-preview.*` 태그에만 반응하며 두 workflow 모두 수동 실행을 지원합니다.
 

@@ -4,12 +4,12 @@
 
 ## Recommended Choice
 
-- **For the lightest and easiest version to try first, use the [v2.0.0-preview.4 WebView2 Native Preview](https://github.com/saveway/codex-usage-monitor/releases/tag/v2.0.0-preview.4).** It is approximately 0.3 MB, bundles no Python, Playwright, or Chromium, and uses Microsoft Edge WebView2 Runtime. It is still a preview, so use v1 Stable if you encounter problems.
+- **For the lightest and easiest version to try first, use the [v2.0.0-preview.5 WebView2 Native Preview](https://github.com/saveway/codex-usage-monitor/releases/tag/v2.0.0-preview.5).** It is approximately 0.3 MB, bundles no Python, Playwright, or Chromium, and uses Microsoft Edge WebView2 Runtime. It is still a preview, so use v1 Stable if you encounter problems.
 - **For the established stable approach, or if v2 does not work, use [v1.0.1 Stable](https://github.com/saveway/codex-usage-monitor/releases/tag/v1.0.1).** v1 Full is large because it includes Chromium but requires no Python installation. v1 Lite is small but requires Python and Playwright.
 
 V2 does not yet replace v1 as the default stable distribution. See the [WebView2 native preview documentation](native-webview2/README-native.md) for execution, security, and limitation details.
 
-V2 Preview is a portable ZIP, not an installer. It includes the basic Rings widget, but it still does not include an installer, startup registration, or code signing. Do not run it directly inside the archive or from a temporary directory. Extract the entire ZIP to a permanent directory of your choice, then run `CodexUsageMonitorV2.exe`. Running from a temporary location can break relaunching, path persistence, or a future startup configuration.
+V2 Preview is a portable ZIP, not an installer. It includes Rings, Bars, Meters, and Battery widget graphs, but it still does not include an installer, startup registration, or code signing. Do not run it directly inside the archive or from a temporary directory. Extract the entire ZIP to a permanent directory of your choice, then run `CodexUsageMonitorV2.exe`. Running from a temporary location can break relaunching, path persistence, or a future startup configuration.
 
 Release tag ownership is separated: the v1 Full/Lite workflow responds only to `v1.*`, while the v2 preview workflow responds only to `v2.*-preview.*`. Both workflows retain manual dispatch support.
 
