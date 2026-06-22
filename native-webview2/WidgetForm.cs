@@ -333,19 +333,19 @@ namespace CodexUsageMonitorV2
         {
             using (var trackPen = CreateRoundPen(palette.GetColor("Track"), 5f))
             using (var valuePen = CreateRoundPen(color, 5f))
-            using (var needlePen = new Pen(palette.GetColor("Text"), 2f))
+            using (var needlePen = new Pen(palette.GetColor("Text"), 1.6f))
             using (var hubBrush = new SolidBrush(palette.GetColor("CenterFill")))
             {
                 g.DrawArc(trackPen, bounds, 180, 180);
                 g.DrawArc(valuePen, bounds, 180, percent * 1.8f);
-                var angle = Math.PI * (1d + percent / 100d);
-                var center = new PointF(bounds.Left + bounds.Width / 2f, bounds.Top + bounds.Height);
-                var length = bounds.Width * 0.35f;
+                var angle = Math.PI * (180d + percent * 1.8d) / 180d;
+                var center = new PointF(bounds.Left + bounds.Width / 2f, bounds.Top + bounds.Height / 2f);
+                var length = bounds.Width * 0.43f;
                 var end = new PointF(
                     center.X + (float)Math.Cos(angle) * length,
                     center.Y + (float)Math.Sin(angle) * length);
                 g.DrawLine(needlePen, center, end);
-                g.FillEllipse(hubBrush, center.X - 3, center.Y - 3, 6, 6);
+                g.FillEllipse(hubBrush, center.X - 2.5f, center.Y - 2.5f, 5, 5);
             }
         }
 
