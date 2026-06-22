@@ -20,6 +20,7 @@ namespace CodexUsageMonitorV2
         private Point dragStart;
         private static bool codexIconLoadAttempted;
         private static Bitmap codexIconBitmap;
+        private static Rectangle codexIconVisibleBounds;
 
         public event EventHandler WidgetClosedByUser;
         public event EventHandler WidgetMovedOrSized;
@@ -215,8 +216,9 @@ namespace CodexUsageMonitorV2
                 var widgetCenterX = LogicalCenterX();
                 DrawProgressBar(g, trackBrush, fiveHourBrush, fiveHourBar, fiveHour);
                 DrawProgressBar(g, trackBrush, weeklyBrush, weeklyBar, weekly);
-                g.FillEllipse(centerBrush, widgetCenterX - 11, 53, 22, 22);
-                DrawCodexMark(g, widgetCenterX, LogicalCenterY(), GetLogicalIconSize());
+                var iconAnchor = new PointF(widgetCenterX, (fiveHourBar.Bottom + weeklyBar.Top) / 2f);
+                g.FillEllipse(centerBrush, iconAnchor.X - 11, iconAnchor.Y - 11, 22, 22);
+                DrawCodexMark(g, iconAnchor.X, iconAnchor.Y, GetLogicalIconSize());
                 DrawUsageTextLine(g, BuildFiveHourLine(fiveHour), font, textBrush, CenterX(fiveHourBar), 14, 6, 122);
                 DrawUsageTextLine(g, BuildWeeklyLine(weekly), font, textBrush, CenterX(weeklyBar), 76, 6, 122);
                 g.DrawString("x", font, closeBrush, 113, 3);
@@ -236,10 +238,11 @@ namespace CodexUsageMonitorV2
                 var weeklyMeter = new RectangleF(70, 22, 44, 34);
                 var meterGroup = Union(fiveHourMeter, weeklyMeter);
                 var groupCenterX = CenterX(meterGroup);
+                var iconAnchor = new PointF(groupCenterX, (meterGroup.Bottom + 76f) / 2f);
                 DrawMeter(g, fiveHourMeter, fiveHour, palette.GetFiveHourColor(fiveHour));
                 DrawMeter(g, weeklyMeter, weekly, palette.GetWeeklyColor(weekly));
-                g.FillEllipse(centerBrush, LogicalCenterX() - 11, 53, 22, 22);
-                DrawCodexMark(g, LogicalCenterX(), LogicalCenterY(), GetLogicalIconSize());
+                g.FillEllipse(centerBrush, iconAnchor.X - 11, iconAnchor.Y - 11, 22, 22);
+                DrawCodexMark(g, iconAnchor.X, iconAnchor.Y, GetLogicalIconSize());
                 DrawUsageLines(g, textBrush, font, groupCenterX, 76, 91, 4, 124);
                 g.DrawString("x", font, closeBrush, 113, 3);
             }
@@ -260,11 +263,13 @@ namespace CodexUsageMonitorV2
             {
                 var fiveHourBody = new Rectangle(18, 34, 88, 18);
                 var weeklyBody = new Rectangle(18, 92, 88, 18);
+                var bodyCenterX = CenterX(fiveHourBody);
+                var iconAnchor = new PointF(bodyCenterX, (fiveHourBody.Bottom + weeklyBody.Top) / 2f);
                 DrawBattery(g, outlinePen, trackBrush, fiveHourBrush, fiveHourBody, fiveHour);
                 DrawBattery(g, outlinePen, trackBrush, weeklyBrush, weeklyBody, weekly);
-                g.FillEllipse(centerBrush, LogicalCenterX() - 11, 53, 22, 22);
-                DrawCodexMark(g, LogicalCenterX(), LogicalCenterY(), GetLogicalIconSize());
-                DrawUsageTextLine(g, BuildFiveHourLine(fiveHour), font, textBrush, CenterX(fiveHourBody), 18, 6, 118);
+                g.FillEllipse(centerBrush, iconAnchor.X - 11, iconAnchor.Y - 11, 22, 22);
+                DrawCodexMark(g, iconAnchor.X, iconAnchor.Y, GetLogicalIconSize());
+                DrawUsageTextLine(g, BuildFiveHourLine(fiveHour), font, textBrush, bodyCenterX, 18, 6, 118);
                 DrawUsageTextLine(g, BuildWeeklyLine(weekly), font, textBrush, CenterX(weeklyBody), 76, 6, 118);
                 g.DrawString("x", font, closeBrush, 113, 3);
             }
@@ -480,11 +485,7 @@ namespace CodexUsageMonitorV2
             var iconBitmap = GetCodexIconBitmap();
             if (iconBitmap != null)
             {
-                var rect = new RectangleF(
-                    centerX - iconSize / 2f,
-                    centerY - iconSize / 2f,
-                    iconSize,
-                    iconSize);
+                var rect = CalculateCodexIconDrawRect(centerX, centerY, iconSize, iconBitmap, codexIconVisibleBounds);
                 g.DrawImage(iconBitmap, rect);
                 return;
             }
@@ -518,6 +519,7 @@ namespace CodexUsageMonitorV2
                 if (extracted != null)
                 {
                     codexIconBitmap = extracted.ToBitmap();
+                    codexIconVisibleBounds = CalculateVisibleBounds(codexIconBitmap);
                     extracted.Dispose();
                 }
             }
@@ -526,6 +528,55 @@ namespace CodexUsageMonitorV2
                 AppLogger.Write("Codex widget icon could not be loaded from " + path + ": " + ex.Message);
             }
             return codexIconBitmap;
+        }
+
+        private static RectangleF CalculateCodexIconDrawRect(float anchorX, float anchorY, float iconSize, Bitmap bitmap, Rectangle visibleBounds)
+        {
+            if (bitmap == null || bitmap.Width <= 0 || bitmap.Height <= 0 || visibleBounds.Width <= 0 || visibleBounds.Height <= 0)
+            {
+                return new RectangleF(anchorX - iconSize / 2f, anchorY - iconSize / 2f, iconSize, iconSize);
+            }
+
+            var visibleCenterX = visibleBounds.Left + visibleBounds.Width / 2f;
+            var visibleCenterY = visibleBounds.Top + visibleBounds.Height / 2f;
+            var normalizedCenterX = visibleCenterX / bitmap.Width;
+            var normalizedCenterY = visibleCenterY / bitmap.Height;
+            return new RectangleF(
+                anchorX - normalizedCenterX * iconSize,
+                anchorY - normalizedCenterY * iconSize,
+                iconSize,
+                iconSize);
+        }
+
+        private static Rectangle CalculateVisibleBounds(Bitmap bitmap)
+        {
+            var left = bitmap.Width;
+            var top = bitmap.Height;
+            var right = -1;
+            var bottom = -1;
+
+            for (var y = 0; y < bitmap.Height; y++)
+            {
+                for (var x = 0; x < bitmap.Width; x++)
+                {
+                    var pixel = bitmap.GetPixel(x, y);
+                    if (pixel.A <= 12)
+                    {
+                        continue;
+                    }
+
+                    if (x < left) left = x;
+                    if (y < top) top = y;
+                    if (x > right) right = x;
+                    if (y > bottom) bottom = y;
+                }
+            }
+
+            if (right < left || bottom < top)
+            {
+                return new Rectangle(0, 0, bitmap.Width, bitmap.Height);
+            }
+            return Rectangle.FromLTRB(left, top, right + 1, bottom + 1);
         }
 
         private static string FindCodexExePath()
