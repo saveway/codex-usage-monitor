@@ -9,7 +9,7 @@
     <RootNamespace>CodexUsageMonitorV2</RootNamespace>
     <AssemblyName>CodexUsageMonitorV2</AssemblyName>
     <VersionBase>2.0.0</VersionBase>
-    <PreviewNumber>6</PreviewNumber>
+    <PreviewNumber>7</PreviewNumber>
     <PreviewVersion>$(VersionBase)-preview.$(PreviewNumber)</PreviewVersion>
     <NumericVersion>$(VersionBase).$(PreviewNumber)</NumericVersion>
     <Version>$(PreviewVersion)</Version>

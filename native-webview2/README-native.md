@@ -4,7 +4,7 @@ This folder contains a release-candidate preview of a small native Windows versi
 
 ## Preview status
 
-The `v2.0.0-preview.6` preview has been verified with a real visible ChatGPT login, persistent WebView2 session, authenticated usage-page parsing, general Codex reset/credits parsing, opt-in automatic refresh, tray menu operation, color settings, dynamic tray icon rendering, Rings/Bars/Meters/Battery widget styles, cache cleanup, stable exit, and a clean GitHub Actions artifact. It is still labeled **preview** because it has no installer, startup registration, code signing, or broad multi-machine compatibility testing.
+The `v2.0.0-preview.7` preview has been verified with a real visible ChatGPT login, persistent WebView2 session, authenticated usage-page parsing, general Codex reset/credits parsing, opt-in automatic refresh, tray menu operation, color settings, dynamic tray icon rendering, Rings/Bars/Meters/Battery widget styles, cache cleanup, stable exit, and a clean GitHub Actions artifact. It is still labeled **preview** because it has no installer, startup registration, code signing, or broad multi-machine compatibility testing.
 
 ## Design decision
 
@@ -19,7 +19,7 @@ Using .NET Framework 4.8 is practical for this prototype and keeps the app binar
 ## Current features
 
 - A self-designed teal gauge icon is embedded in the EXE and used by the tray and app windows. It does not use an OpenAI, ChatGPT, or Codex logo or trademark artwork.
-- This document describes the `v2.0.0-preview.6` prerelease. About and window UI read the assembly informational version generated from the project-level `PreviewVersion`, so the UI and ProductVersion use the same preview version. Windows FileVersion uses the corresponding numeric value `2.0.0.6`.
+- This document describes the `v2.0.0-preview.7` prerelease. About and window UI read the assembly informational version generated from the project-level `PreviewVersion`, so the UI and ProductVersion use the same preview version. Windows FileVersion uses the corresponding numeric value `2.0.0.7`.
 - Notification-area icon with `Open/Login usage page`, `Fetch now`, `Reload saved data`, `Open data file`, `Open log`, `Clear WebView2 cache`, `Show widget`, and `Exit`.
 - A `Colors` menu exposes 21 configurable palette entries, including six five-hour stages, six weekly stages, and nine interface colors. `Reset all colors` restores the defaults.
 - The tray icon dynamically renders the current general Codex 5-hour and weekly remaining percentages with the configured staged colors.
