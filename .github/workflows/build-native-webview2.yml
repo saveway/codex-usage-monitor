@@ -177,13 +177,16 @@ jobs:
           body: |
             ## WebView2 Native Preview
 
-            ### What's new in preview.3
+            ### What's new in preview.4
 
-            - About, ProductVersion, and package version now consistently identify `v2.0.0-preview.3`.
-            - Version metadata now has one project-level source instead of a separate UI hardcode.
+            - Color settings menu with a 21-color palette and `Reset all colors`.
+            - Dynamic tray icon rendering based on general Codex 5-hour and weekly remaining percentages.
+            - General Codex limits and GPT-5.3-Codex-Spark limits are parsed into separate fields.
+            - Tooltip `5h` and `W` values continue to mean the general Codex limits.
+            - Basic Rings widget with 128x128 / 256x256 size switching, drag movement, saved visibility, saved position, saved size, and a right-click menu.
             - Auto refresh remains opt-in and Default OFF, with 10/15/30/60 minute intervals only.
             - Login and session data remain local in `%LOCALAPPDATA%\CodexUsageMonitorV2`.
-            - This is still a preview; no installer or widget UI is included yet.
+            - This is still a preview; no installer, startup registration, or code signing is included yet.
 
             ### Runtime and privacy
 
