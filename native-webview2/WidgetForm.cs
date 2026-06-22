@@ -114,6 +114,8 @@ namespace CodexUsageMonitorV2
         {
             var g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
+            g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+            g.PixelOffsetMode = PixelOffsetMode.HighQuality;
             g.Clear(palette.GetColor("TransparentEdge"));
             var scale = panel.Width / (float)LogicalSize;
             var state = g.Save();
@@ -143,7 +145,7 @@ namespace CodexUsageMonitorV2
             using (var titleFont = new Font("Segoe UI", 9f, FontStyle.Bold))
             using (var bodyFont = new Font("Segoe UI", 7f))
             {
-                DrawCodexMark(g, 64, 36, 22f);
+                DrawCodexMark(g, LogicalCenterX(), 36, GetLogicalIconSize());
                 g.DrawString("No data yet", titleFont, textBrush, 28, 58);
                 g.DrawString("Login or Fetch now", bodyFont, mutedBrush, 22, 78);
                 g.DrawString("required", bodyFont, mutedBrush, 45, 92);
@@ -182,13 +184,16 @@ namespace CodexUsageMonitorV2
             using (var closeBrush = new SolidBrush(palette.GetColor("Close")))
             using (var fontSmall = new Font("Segoe UI", 7.5f, FontStyle.Bold))
             {
-                g.DrawArc(trackPen, 25, 25, 78, 78, -90, 360);
-                g.DrawArc(fiveHourPen, 25, 25, 78, 78, -90, fiveHour * 3.6f);
-                g.DrawArc(trackPen, 41, 41, 46, 46, -90, 360);
-                g.DrawArc(weeklyPen, 41, 41, 46, 46, -90, weekly * 3.6f);
-                g.FillEllipse(centerBrush, 53, 53, 22, 22);
-                DrawCodexMark(g, 64, 64, 18f);
-                DrawUsageLines(g, textBrush, fontSmall, 64, 91, 105, 4, 124);
+                var outerRing = new RectangleF(30, 10, 68, 68);
+                var innerRing = new RectangleF(44, 24, 40, 40);
+                var ringCenter = CenterOf(outerRing);
+                g.DrawArc(trackPen, outerRing, -90, 360);
+                g.DrawArc(fiveHourPen, outerRing, -90, fiveHour * 3.6f);
+                g.DrawArc(trackPen, innerRing, -90, 360);
+                g.DrawArc(weeklyPen, innerRing, -90, weekly * 3.6f);
+                g.FillEllipse(centerBrush, ringCenter.X - 11, ringCenter.Y - 11, 22, 22);
+                DrawCodexMark(g, ringCenter.X, ringCenter.Y, GetLogicalIconSize());
+                DrawUsageLines(g, textBrush, fontSmall, ringCenter.X, 91, 105, 4, 124);
                 g.DrawString("x", fontSmall, closeBrush, 113, 3);
             }
         }
@@ -205,12 +210,15 @@ namespace CodexUsageMonitorV2
             using (var font = new Font("Segoe UI", 8f, FontStyle.Bold))
             using (var centerBrush = new SolidBrush(palette.GetColor("CenterFill")))
             {
-                DrawProgressBar(g, trackBrush, fiveHourBrush, 18, 30, 92, 16, fiveHour);
-                DrawProgressBar(g, trackBrush, weeklyBrush, 18, 92, 92, 16, weekly);
-                g.FillEllipse(centerBrush, 53, 53, 22, 22);
-                DrawCodexMark(g, 64, 64, 18f);
-                DrawUsageTextLine(g, BuildFiveHourLine(fiveHour), font, textBrush, 64, 14, 6, 122);
-                DrawUsageTextLine(g, BuildWeeklyLine(weekly), font, textBrush, 64, 76, 6, 122);
+                var fiveHourBar = new Rectangle(18, 30, 92, 16);
+                var weeklyBar = new Rectangle(18, 92, 92, 16);
+                var widgetCenterX = LogicalCenterX();
+                DrawProgressBar(g, trackBrush, fiveHourBrush, fiveHourBar, fiveHour);
+                DrawProgressBar(g, trackBrush, weeklyBrush, weeklyBar, weekly);
+                g.FillEllipse(centerBrush, widgetCenterX - 11, 53, 22, 22);
+                DrawCodexMark(g, widgetCenterX, LogicalCenterY(), GetLogicalIconSize());
+                DrawUsageTextLine(g, BuildFiveHourLine(fiveHour), font, textBrush, CenterX(fiveHourBar), 14, 6, 122);
+                DrawUsageTextLine(g, BuildWeeklyLine(weekly), font, textBrush, CenterX(weeklyBar), 76, 6, 122);
                 g.DrawString("x", font, closeBrush, 113, 3);
             }
         }
@@ -224,11 +232,15 @@ namespace CodexUsageMonitorV2
             using (var font = new Font("Segoe UI", 7.5f, FontStyle.Bold))
             using (var centerBrush = new SolidBrush(palette.GetColor("CenterFill")))
             {
-                DrawMeter(g, new RectangleF(14, 22, 44, 34), fiveHour, palette.GetFiveHourColor(fiveHour));
-                DrawMeter(g, new RectangleF(70, 22, 44, 34), weekly, palette.GetWeeklyColor(weekly));
-                g.FillEllipse(centerBrush, 53, 53, 22, 22);
-                DrawCodexMark(g, 64, 64, 18f);
-                DrawUsageLines(g, textBrush, font, 64, 76, 91, 4, 124);
+                var fiveHourMeter = new RectangleF(14, 22, 44, 34);
+                var weeklyMeter = new RectangleF(70, 22, 44, 34);
+                var meterGroup = Union(fiveHourMeter, weeklyMeter);
+                var groupCenterX = CenterX(meterGroup);
+                DrawMeter(g, fiveHourMeter, fiveHour, palette.GetFiveHourColor(fiveHour));
+                DrawMeter(g, weeklyMeter, weekly, palette.GetWeeklyColor(weekly));
+                g.FillEllipse(centerBrush, LogicalCenterX() - 11, 53, 22, 22);
+                DrawCodexMark(g, LogicalCenterX(), LogicalCenterY(), GetLogicalIconSize());
+                DrawUsageLines(g, textBrush, font, groupCenterX, 76, 91, 4, 124);
                 g.DrawString("x", font, closeBrush, 113, 3);
             }
         }
@@ -246,12 +258,14 @@ namespace CodexUsageMonitorV2
             using (var font = new Font("Segoe UI", 7.5f, FontStyle.Bold))
             using (var centerBrush = new SolidBrush(palette.GetColor("CenterFill")))
             {
-                DrawBattery(g, outlinePen, trackBrush, fiveHourBrush, 18, 34, 88, 18, fiveHour);
-                DrawBattery(g, outlinePen, trackBrush, weeklyBrush, 18, 92, 88, 18, weekly);
-                g.FillEllipse(centerBrush, 53, 53, 22, 22);
-                DrawCodexMark(g, 64, 64, 18f);
-                DrawUsageTextLine(g, BuildFiveHourLine(fiveHour), font, textBrush, 62, 18, 6, 118);
-                DrawUsageTextLine(g, BuildWeeklyLine(weekly), font, textBrush, 62, 76, 6, 118);
+                var fiveHourBody = new Rectangle(18, 34, 88, 18);
+                var weeklyBody = new Rectangle(18, 92, 88, 18);
+                DrawBattery(g, outlinePen, trackBrush, fiveHourBrush, fiveHourBody, fiveHour);
+                DrawBattery(g, outlinePen, trackBrush, weeklyBrush, weeklyBody, weekly);
+                g.FillEllipse(centerBrush, LogicalCenterX() - 11, 53, 22, 22);
+                DrawCodexMark(g, LogicalCenterX(), LogicalCenterY(), GetLogicalIconSize());
+                DrawUsageTextLine(g, BuildFiveHourLine(fiveHour), font, textBrush, CenterX(fiveHourBody), 18, 6, 118);
+                DrawUsageTextLine(g, BuildWeeklyLine(weekly), font, textBrush, CenterX(weeklyBody), 76, 6, 118);
                 g.DrawString("x", font, closeBrush, 113, 3);
             }
         }
@@ -387,13 +401,13 @@ namespace CodexUsageMonitorV2
             }
         }
 
-        private static void DrawProgressBar(Graphics g, Brush trackBrush, Brush fillBrush, int x, int y, int width, int height, int percent)
+        private static void DrawProgressBar(Graphics g, Brush trackBrush, Brush fillBrush, Rectangle bounds, int percent)
         {
-            g.FillRectangle(trackBrush, x, y, width, height);
-            g.FillRectangle(fillBrush, x, y, Math.Max(1, width * percent / 100), height);
+            g.FillRectangle(trackBrush, bounds);
+            g.FillRectangle(fillBrush, bounds.X, bounds.Y, Math.Max(1, bounds.Width * percent / 100), bounds.Height);
             using (var pen = new Pen(Color.FromArgb(120, Color.White), 1f))
             {
-                g.DrawRectangle(pen, x, y, width, height);
+                g.DrawRectangle(pen, bounds);
             }
         }
 
@@ -417,14 +431,48 @@ namespace CodexUsageMonitorV2
             }
         }
 
-        private static void DrawBattery(Graphics g, Pen outlinePen, Brush trackBrush, Brush fillBrush, int x, int y, int width, int height, int percent)
+        private static void DrawBattery(Graphics g, Pen outlinePen, Brush trackBrush, Brush fillBrush, Rectangle body, int percent)
         {
-            var body = new Rectangle(x, y, width, height);
-            var nub = new Rectangle(x + width + 2, y + height / 3, 4, height / 3);
+            var nub = new Rectangle(body.Right + 2, body.Y + body.Height / 3, 4, body.Height / 3);
             g.FillRectangle(trackBrush, body);
-            g.FillRectangle(fillBrush, x + 2, y + 2, Math.Max(1, (width - 4) * percent / 100), height - 4);
+            g.FillRectangle(fillBrush, body.X + 2, body.Y + 2, Math.Max(1, (body.Width - 4) * percent / 100), body.Height - 4);
             g.DrawRectangle(outlinePen, body);
             g.DrawRectangle(outlinePen, nub);
+        }
+
+        private static float LogicalCenterX()
+        {
+            return LogicalSize / 2f;
+        }
+
+        private static float LogicalCenterY()
+        {
+            return LogicalSize / 2f;
+        }
+
+        private float GetLogicalIconSize()
+        {
+            return logicalWidgetSize == 256 ? 19f : 26f;
+        }
+
+        private static PointF CenterOf(RectangleF bounds)
+        {
+            return new PointF(CenterX(bounds), bounds.Top + bounds.Height / 2f);
+        }
+
+        private static float CenterX(Rectangle bounds)
+        {
+            return bounds.Left + bounds.Width / 2f;
+        }
+
+        private static float CenterX(RectangleF bounds)
+        {
+            return bounds.Left + bounds.Width / 2f;
+        }
+
+        private static RectangleF Union(RectangleF first, RectangleF second)
+        {
+            return RectangleF.Union(first, second);
         }
 
         private void DrawCodexMark(Graphics g, float centerX, float centerY, float iconSize)
