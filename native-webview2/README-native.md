@@ -21,8 +21,9 @@ Using .NET Framework 4.8 is practical for this prototype and keeps the app binar
 - A self-designed teal gauge icon is embedded in the EXE and used by the tray and app windows. It does not use an OpenAI, ChatGPT, or Codex logo or trademark artwork.
 - File/product metadata and the UI identify this build as `v2.0.0-preview.1` and `WebView2 Native Preview`.
 - Notification-area icon with `Open/Login usage page`, `Fetch now`, `Reload saved data`, `Open data file`, `Open log`, `Clear WebView2 cache`, and `Exit`.
+- An `Auto refresh` submenu offers `Off`, `10 minutes`, `15 minutes`, `30 minutes`, and `60 minutes`. It is Off by default and never offers an interval shorter than 10 minutes.
 - An `About` menu opens app name, preview version, unofficial status, dependency summary, local data location, and GitHub repository information.
-- The tray tooltip shows the last saved 5-hour percentage, weekly percentage, update time, and compact status. It uses a short format such as `5h 00% | W 00% | 06-22 12:34 | Saved` to remain within the Windows tooltip limit.
+- The tray tooltip shows the last saved 5-hour percentage, weekly percentage, update time, compact status, auto-refresh mode, and next scheduled time. It uses a compact format such as `Codex Usage Monitor V2|5h00% W00%|U06-22/12:34|OK|A10>N12:44` to remain within the Windows tooltip limit.
 - A visible WebView2 window opens `https://chatgpt.com/codex/cloud/settings/analytics#usage`.
 - Login happens only on the real ChatGPT/OpenAI page shown in WebView2.
 - The persistent WebView2 user-data folder is `%LOCALAPPDATA%\CodexUsageMonitorV2\webview2-profile`.
@@ -57,12 +58,12 @@ The initial x64 Release build contains five files:
 
 | File | Bytes |
 |---|---:|
-| `CodexUsageMonitorV2.exe` | 66,560 |
+| `CodexUsageMonitorV2.exe` | 72,704 |
 | `CodexUsageMonitorV2.exe.config` | 174 |
 | `Microsoft.Web.WebView2.Core.dll` | 698,248 |
 | `Microsoft.Web.WebView2.WinForms.dll` | 38,792 |
 | `runtimes\win-x64\native\WebView2Loader.dll` | 163,208 |
-| **Total** | **966,982 (about 0.92 MiB)** |
+| **Total** | **973,126 (about 0.93 MiB)** |
 
 The normal build directory is slightly larger because NuGet also copies assemblies that this WinForms-only package does not need. Use the `deploy` directory for size evaluation.
 
@@ -81,7 +82,15 @@ The remaining menu commands behave as follows:
 - `About` displays preview identity, version, WebView2 dependency, local data location, and the project repository.
 - `Exit` closes the WebView2 form, hides and disposes the notification icon, runs final cache cleanup, and exits without PID or lock files.
 
-There is no automatic or periodic fetch in this prototype. Usage changes only when `Fetch now` succeeds or the local display is refreshed with `Reload saved data`.
+## Auto refresh
+
+Auto refresh is explicitly opt-in and defaults to `Off`. Open the tray menu, choose `Auto refresh`, and select `10 minutes`, `15 minutes`, `30 minutes`, or `60 minutes`. Selecting `Off` stops the active schedule. The selected value is stored locally in `%LOCALAPPDATA%\CodexUsageMonitorV2\codex-usage-settings.json` and restored on the next app start.
+
+When enabled, the tooltip includes the interval and next scheduled time. Automatic collection periodically loads the usage page with the local WebView2 session previously created by the user. Normal automatic loading does not use an off-screen window, automation-evasion flag, extracted cookie, token call, or external server. If the session has expired or authentication is required, the app shows the real WebView2 window and asks the user to sign in directly on the visible ChatGPT/OpenAI page. It never supplies its own login form.
+
+Only the parsed 5-hour and weekly percentages and update metadata are saved on success. Login-required, network, parse, and Runtime failures are reported as distinct tray states (`login`, `net`, `parse`, and `rt`). Failure diagnostics retain only coarse boolean/category information; page text, email addresses, cookies, tokens, and account credentials are not stored.
+
+A single-operation guard prevents automatic refresh, `Fetch now`, and cache cleanup from running over one another. A manual fetch resets the next automatic schedule. Exit stops and disposes the timer before closing WebView2 and the tray icon.
 
 If WebView2 Runtime is missing, install the Evergreen Runtime from the official Microsoft WebView2 download page and restart the app:
 
@@ -133,6 +142,7 @@ The prototype may create:
   codex-usage-monitor-v2.log
   codex-usage-monitor-v2.log.1
   codex-usage-debug-status.txt
+  codex-usage-settings.json
   webview2-profile\
 ```
 
@@ -178,7 +188,6 @@ V2 remains a prototype and is distributed only as a manually built Actions artif
 ## Unsupported in this preview
 
 - Widget UI and graph styles.
-- Automatic periodic collection.
 - Credits and reset-time parsing.
 - Installer, Windows startup registration, code signing, stable v2 Release publishing, and non-preview Release attachment.
 - Localization beyond the current English UI.

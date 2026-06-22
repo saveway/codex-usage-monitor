@@ -19,6 +19,10 @@ namespace CodexUsageMonitorV2
         private bool initialized;
         private bool fetchAfterNavigation;
         private bool fetchInProgress;
+        private bool automaticFetch;
+        private TaskCompletionSource<FetchResult> fetchCompletion;
+
+        public bool IsBusy { get { return fetchAfterNavigation || fetchInProgress; } }
 
         public event EventHandler<UsageSnapshot> UsageUpdated;
         public event EventHandler<AppStatusEventArgs> StatusChanged;
@@ -43,30 +47,71 @@ namespace CodexUsageMonitorV2
             FormClosed += (sender, args) => windowIcon.Dispose();
         }
 
-        public async Task OpenAsync(bool fetchNow)
+        public async Task<FetchResult> OpenAsync(bool fetchNow, bool automatic)
         {
+            if (IsBusy)
+            {
+                return FetchResult.Busy;
+            }
+
+            automaticFetch = automatic;
             fetchAfterNavigation = fetchNow;
             SetStatus(
                 AppStatusKind.Information,
                 fetchNow ? "Opening the usage page and reading usage..." : "Opening the ChatGPT sign-in or usage page...",
                 false);
-            Show();
-            WindowState = FormWindowState.Normal;
-            Activate();
+            if (automatic)
+            {
+                EnsureHiddenControlHandles();
+            }
+            else
+            {
+                ShowForUser();
+            }
 
             if (!await EnsureWebViewAsync())
             {
-                return;
+                fetchAfterNavigation = false;
+                automaticFetch = false;
+                return FetchResult.RuntimeError;
             }
 
-            AppLogger.Write((fetchNow ? "Fetch now" : "Open/Login") + " requested.");
-            webView.CoreWebView2.Navigate(UsageUrl);
+            if (fetchNow)
+            {
+                fetchCompletion = new TaskCompletionSource<FetchResult>();
+            }
+            AppLogger.Write(
+                (automatic ? "Automatic refresh" : fetchNow ? "Fetch now" : "Open/Login") +
+                " requested.");
+            if (fetchNow && IsUsagePage(webView.Source))
+            {
+                webView.CoreWebView2.Reload();
+            }
+            else
+            {
+                webView.CoreWebView2.Navigate(UsageUrl);
+            }
+            return fetchNow ? await fetchCompletion.Task : FetchResult.Opened;
         }
 
         public void CloseForExit()
         {
+            CompleteFetch(FetchResult.Stopped);
             allowClose = true;
             Close();
+        }
+
+        private void ShowForUser()
+        {
+            Show();
+            WindowState = FormWindowState.Normal;
+            Activate();
+        }
+
+        private void EnsureHiddenControlHandles()
+        {
+            var unused = Handle;
+            webView.CreateControl();
         }
 
         private async Task<bool> EnsureWebViewAsync()
@@ -141,6 +186,7 @@ namespace CodexUsageMonitorV2
                     : "The ChatGPT usage page could not be opened.";
                 SafeDebugSnapshot.Save(networkFailure ? "network_failure" : "page_access_failure", webView.Source, string.Empty);
                 SetStatus(networkFailure ? AppStatusKind.Error : AppStatusKind.Warning, message, true);
+                CompleteFetch(networkFailure ? FetchResult.NetworkError : FetchResult.ParseFailed);
                 return;
             }
 
@@ -164,9 +210,14 @@ namespace CodexUsageMonitorV2
                 if (LooksLikeLoginRequired(webView.Source, pageText))
                 {
                     SafeDebugSnapshot.Save("login_required", webView.Source, pageText);
-                    SetStatus(AppStatusKind.Warning, "Login required. Sign in on this ChatGPT page, then choose Fetch now.", fetchAfterNavigation);
+                    if (automaticFetch)
+                    {
+                        ShowForUser();
+                    }
+                    SetStatus(AppStatusKind.Warning, "Login required. Use the visible ChatGPT page, then choose Fetch now.", fetchAfterNavigation);
                     fetchAfterNavigation = false;
                     fetchInProgress = false;
+                    CompleteFetch(FetchResult.LoginRequired);
                     return;
                 }
 
@@ -187,6 +238,7 @@ namespace CodexUsageMonitorV2
                 AppLogger.Write("Usage saved. Both required percentage fields were detected.");
                 SetStatus(AppStatusKind.Success, "Usage updated: 5-hour and weekly limits were detected.", true);
                 UsageUpdated?.Invoke(this, snapshot);
+                CompleteFetch(FetchResult.Success);
             }
             catch (Exception ex)
             {
@@ -194,7 +246,19 @@ namespace CodexUsageMonitorV2
                 fetchInProgress = false;
                 SafeDebugSnapshot.Save("parse_failure", webView.Source, await ReadPageTextSafely());
                 AppLogger.Write("Usage read/parse failed: " + ex.Message);
-                SetStatus(AppStatusKind.Warning, "Usage text was found, but the required percentages could not be parsed.", true);
+                SetStatus(AppStatusKind.Warning, "Parse failed. The required usage percentages could not be read.", true);
+                CompleteFetch(FetchResult.ParseFailed);
+            }
+        }
+
+        private void CompleteFetch(FetchResult result)
+        {
+            automaticFetch = false;
+            var completion = fetchCompletion;
+            fetchCompletion = null;
+            if (completion != null)
+            {
+                completion.TrySetResult(result);
             }
         }
 

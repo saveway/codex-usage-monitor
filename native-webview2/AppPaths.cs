@@ -16,6 +16,7 @@ namespace CodexUsageMonitorV2
         public static readonly string DataPath = Path.Combine(RuntimeDirectory, "codex-usage.json");
         public static readonly string LogPath = Path.Combine(RuntimeDirectory, "codex-usage-monitor-v2.log");
         public static readonly string DebugStatusPath = Path.Combine(RuntimeDirectory, "codex-usage-debug-status.txt");
+        public static readonly string SettingsPath = Path.Combine(RuntimeDirectory, "codex-usage-settings.json");
 
         public static void EnsureDirectories()
         {

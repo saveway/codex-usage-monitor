@@ -10,6 +10,18 @@ namespace CodexUsageMonitorV2
         Error
     }
 
+    internal enum FetchResult
+    {
+        Opened,
+        Success,
+        LoginRequired,
+        NetworkError,
+        ParseFailed,
+        RuntimeError,
+        Busy,
+        Stopped
+    }
+
     internal sealed class AppStatusEventArgs : EventArgs
     {
         public AppStatusEventArgs(AppStatusKind kind, string message, bool notify)
