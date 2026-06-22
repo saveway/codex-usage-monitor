@@ -1,6 +1,8 @@
 using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Globalization;
+using System.Text.RegularExpressions;
 using System.Windows.Forms;
 
 namespace CodexUsageMonitorV2
@@ -176,7 +178,6 @@ namespace CodexUsageMonitorV2
             using (var textBrush = new SolidBrush(palette.GetColor("Text")))
             using (var closeBrush = new SolidBrush(palette.GetColor("Close")))
             using (var fontSmall = new Font("Segoe UI", 7.5f, FontStyle.Bold))
-            using (var fontTiny = new Font("Segoe UI", 5.8f, FontStyle.Regular))
             {
                 g.DrawArc(trackPen, 25, 25, 78, 78, -90, 360);
                 g.DrawArc(fiveHourPen, 25, 25, 78, 78, -90, fiveHour * 3.6f);
@@ -184,9 +185,7 @@ namespace CodexUsageMonitorV2
                 g.DrawArc(weeklyPen, 41, 41, 46, 46, -90, weekly * 3.6f);
                 g.FillEllipse(centerBrush, 53, 53, 22, 22);
                 DrawCodexMark(g, 64, 64, 8f);
-                g.DrawString("5h " + fiveHour + "%", fontSmall, textBrush, 8, 101);
-                g.DrawString("W " + weekly + "%", fontSmall, textBrush, 72, 101);
-                DrawSupplementaryLine(g, fontTiny, textBrush, 115);
+                DrawUsageLines(g, textBrush, fontSmall, 91, 105);
                 g.DrawString("x", fontSmall, closeBrush, 113, 3);
             }
         }
@@ -201,16 +200,14 @@ namespace CodexUsageMonitorV2
             using (var fiveHourBrush = new SolidBrush(palette.GetFiveHourColor(fiveHour)))
             using (var weeklyBrush = new SolidBrush(palette.GetWeeklyColor(weekly)))
             using (var font = new Font("Segoe UI", 8f, FontStyle.Bold))
-            using (var fontTiny = new Font("Segoe UI", 5.8f, FontStyle.Regular))
             using (var centerBrush = new SolidBrush(palette.GetColor("CenterFill")))
             {
                 DrawProgressBar(g, trackBrush, fiveHourBrush, 18, 30, 92, 16, fiveHour);
                 DrawProgressBar(g, trackBrush, weeklyBrush, 18, 92, 92, 16, weekly);
                 g.FillEllipse(centerBrush, 53, 53, 22, 22);
                 DrawCodexMark(g, 64, 64, 8f);
-                g.DrawString("5h " + fiveHour + "%", font, textBrush, 18, 15);
-                g.DrawString("W " + weekly + "%", font, textBrush, 18, 77);
-                DrawSupplementaryLine(g, fontTiny, textBrush, 113);
+                DrawUsageTextLine(g, BuildFiveHourLine(fiveHour), font, textBrush, 6, 14, 116);
+                DrawUsageTextLine(g, BuildWeeklyLine(weekly), font, textBrush, 6, 76, 116);
                 g.DrawString("x", font, closeBrush, 113, 3);
             }
         }
@@ -222,16 +219,13 @@ namespace CodexUsageMonitorV2
             using (var textBrush = new SolidBrush(palette.GetColor("Text")))
             using (var closeBrush = new SolidBrush(palette.GetColor("Close")))
             using (var font = new Font("Segoe UI", 7.5f, FontStyle.Bold))
-            using (var fontTiny = new Font("Segoe UI", 5.8f, FontStyle.Regular))
             using (var centerBrush = new SolidBrush(palette.GetColor("CenterFill")))
             {
                 DrawMeter(g, new RectangleF(14, 22, 44, 34), fiveHour, palette.GetFiveHourColor(fiveHour));
                 DrawMeter(g, new RectangleF(70, 22, 44, 34), weekly, palette.GetWeeklyColor(weekly));
                 g.FillEllipse(centerBrush, 53, 53, 22, 22);
                 DrawCodexMark(g, 64, 64, 8f);
-                g.DrawString("5h " + fiveHour + "%", font, textBrush, 12, 84);
-                g.DrawString("W " + weekly + "%", font, textBrush, 72, 84);
-                DrawSupplementaryLine(g, fontTiny, textBrush, 110);
+                DrawUsageLines(g, textBrush, font, 76, 91);
                 g.DrawString("x", font, closeBrush, 113, 3);
             }
         }
@@ -247,76 +241,136 @@ namespace CodexUsageMonitorV2
             using (var fiveHourBrush = new SolidBrush(palette.GetFiveHourColor(fiveHour)))
             using (var weeklyBrush = new SolidBrush(palette.GetWeeklyColor(weekly)))
             using (var font = new Font("Segoe UI", 7.5f, FontStyle.Bold))
-            using (var fontTiny = new Font("Segoe UI", 5.8f, FontStyle.Regular))
             using (var centerBrush = new SolidBrush(palette.GetColor("CenterFill")))
             {
                 DrawBattery(g, outlinePen, trackBrush, fiveHourBrush, 18, 34, 88, 18, fiveHour);
                 DrawBattery(g, outlinePen, trackBrush, weeklyBrush, 18, 92, 88, 18, weekly);
                 g.FillEllipse(centerBrush, 53, 53, 22, 22);
                 DrawCodexMark(g, 64, 64, 8f);
-                g.DrawString("5h " + fiveHour + "%", font, textBrush, 18, 18);
-                g.DrawString("W " + weekly + "%", font, textBrush, 18, 76);
-                DrawSupplementaryLine(g, fontTiny, textBrush, 112);
+                DrawUsageTextLine(g, BuildFiveHourLine(fiveHour), font, textBrush, 6, 18, 116);
+                DrawUsageTextLine(g, BuildWeeklyLine(weekly), font, textBrush, 6, 76, 116);
                 g.DrawString("x", font, closeBrush, 113, 3);
             }
         }
 
-        private void DrawSupplementaryLine(Graphics g, Font font, Brush brush, float y)
+        private void DrawUsageLines(Graphics g, Brush brush, Font baseFont, float firstY, float secondY)
         {
-            var text = BuildSupplementaryText(42, false);
-            if (string.IsNullOrEmpty(text))
-            {
-                return;
-            }
-
-            var size = g.MeasureString(text, font);
-            g.DrawString(text, font, brush, Math.Max(2f, 64f - size.Width / 2f), y);
+            DrawUsageTextLine(g, BuildFiveHourLine(Clamp(snapshot.fiveHourRemaining)), baseFont, brush, 4, firstY, 120);
+            DrawUsageTextLine(g, BuildWeeklyLine(Clamp(snapshot.weeklyRemaining)), baseFont, brush, 4, secondY, 120);
         }
 
-        private string BuildSupplementaryText(int maxLength, bool includeZeroCredits)
+        private void DrawUsageTextLine(Graphics g, string text, Font baseFont, Brush brush, float x, float y, float maxWidth)
         {
-            if (snapshot == null)
+            using (var font = CreateFittingFont(g, text, baseFont, maxWidth))
             {
-                return null;
+                g.DrawString(text, font, brush, x, y);
             }
-            if (logicalWidgetSize < 256)
-            {
-                return null;
-            }
-
-            var fiveHourReset = UsageParser.CompactResetText(snapshot.fiveHourResetText);
-            var weeklyReset = UsageParser.CompactResetText(snapshot.weeklyResetText);
-            var credits = NormalizeCredits(snapshot.creditsRemaining);
-            var builder = string.Empty;
-
-            if (!string.IsNullOrEmpty(fiveHourReset) || !string.IsNullOrEmpty(weeklyReset))
-            {
-                builder = "R " +
-                    (string.IsNullOrEmpty(fiveHourReset) ? "--" : fiveHourReset) +
-                    "/" +
-                    (string.IsNullOrEmpty(weeklyReset) ? "--" : weeklyReset);
-            }
-            if (!string.IsNullOrEmpty(credits) && (includeZeroCredits || !IsZeroCredits(credits)))
-            {
-                builder = string.IsNullOrEmpty(builder) ? "C" + credits : builder + " C" + credits;
-            }
-
-            if (builder.Length <= maxLength)
-            {
-                return builder;
-            }
-            return builder.Substring(0, maxLength - 1) + "…";
         }
 
-        private static string NormalizeCredits(string value)
+        private static Font CreateFittingFont(Graphics g, string text, Font baseFont, float maxWidth)
         {
-            return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+            var size = baseFont.Size;
+            while (size > 4.6f)
+            {
+                using (var candidate = new Font(baseFont.FontFamily, size, baseFont.Style))
+                {
+                    if (g.MeasureString(text, candidate).Width <= maxWidth)
+                    {
+                        return new Font(baseFont.FontFamily, size, baseFont.Style);
+                    }
+                }
+                size -= 0.4f;
+            }
+            return new Font(baseFont.FontFamily, 4.6f, baseFont.Style);
         }
 
-        private static bool IsZeroCredits(string value)
+        private string BuildFiveHourLine(int percent)
         {
-            decimal parsed;
-            return decimal.TryParse(value, out parsed) && parsed == 0m;
+            return "5H " + percent + "% / " + FormatFiveHourRemaining(snapshot.fiveHourResetText);
+        }
+
+        private string BuildWeeklyLine(int percent)
+        {
+            return "W " + percent + "% / " + FormatWeeklyRemaining(snapshot.weeklyResetText);
+        }
+
+        private static string FormatFiveHourRemaining(string resetText)
+        {
+            DateTime resetAt;
+            var remaining = TryParseResetDateTime(resetText, out resetAt) ? resetAt - DateTime.Now : TimeSpan.Zero;
+            if (remaining < TimeSpan.Zero)
+            {
+                remaining = TimeSpan.Zero;
+            }
+            var totalHours = Math.Min(99, (int)Math.Floor(remaining.TotalHours));
+            return totalHours.ToString("00", CultureInfo.InvariantCulture) +
+                "시" + remaining.Minutes.ToString("00", CultureInfo.InvariantCulture) + "분";
+        }
+
+        private static string FormatWeeklyRemaining(string resetText)
+        {
+            DateTime resetAt;
+            var remaining = TryParseResetDateTime(resetText, out resetAt) ? resetAt - DateTime.Now : TimeSpan.Zero;
+            if (remaining < TimeSpan.Zero)
+            {
+                remaining = TimeSpan.Zero;
+            }
+            var totalDays = Math.Min(99, (int)Math.Floor(remaining.TotalDays));
+            return totalDays.ToString("00", CultureInfo.InvariantCulture) +
+                "일" + remaining.Hours.ToString("00", CultureInfo.InvariantCulture) + "시";
+        }
+
+        private static bool TryParseResetDateTime(string resetText, out DateTime resetAt)
+        {
+            resetAt = DateTime.MinValue;
+            if (string.IsNullOrWhiteSpace(resetText))
+            {
+                return false;
+            }
+
+            var text = Regex.Replace(resetText, @"\s+", " ").Trim();
+            text = text.Replace("초기화", string.Empty).Trim();
+            var match = Regex.Match(
+                text,
+                @"(?:(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})\.\s*)?(오전|오후|AM|PM)?\s*(\d{1,2}):(\d{2})",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+            if (!match.Success)
+            {
+                return false;
+            }
+
+            var now = DateTime.Now;
+            var year = match.Groups[1].Success ? int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture) : now.Year;
+            var month = match.Groups[2].Success ? int.Parse(match.Groups[2].Value, CultureInfo.InvariantCulture) : now.Month;
+            var day = match.Groups[3].Success ? int.Parse(match.Groups[3].Value, CultureInfo.InvariantCulture) : now.Day;
+            var marker = match.Groups[4].Value;
+            var hour = int.Parse(match.Groups[5].Value, CultureInfo.InvariantCulture);
+            var minute = int.Parse(match.Groups[6].Value, CultureInfo.InvariantCulture);
+
+            if (string.Equals(marker, "오전", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(marker, "AM", StringComparison.OrdinalIgnoreCase))
+            {
+                hour = hour == 12 ? 0 : hour;
+            }
+            else if (string.Equals(marker, "오후", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(marker, "PM", StringComparison.OrdinalIgnoreCase))
+            {
+                hour = hour == 12 ? 12 : hour + 12;
+            }
+
+            try
+            {
+                resetAt = new DateTime(year, month, day, hour, minute, 0);
+                if (!match.Groups[1].Success && resetAt < now)
+                {
+                    resetAt = resetAt.AddDays(1);
+                }
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         private static void DrawProgressBar(Graphics g, Brush trackBrush, Brush fillBrush, int x, int y, int width, int height, int percent)
