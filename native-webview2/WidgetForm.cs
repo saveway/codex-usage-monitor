@@ -176,6 +176,7 @@ namespace CodexUsageMonitorV2
             using (var textBrush = new SolidBrush(palette.GetColor("Text")))
             using (var closeBrush = new SolidBrush(palette.GetColor("Close")))
             using (var fontSmall = new Font("Segoe UI", 7.5f, FontStyle.Bold))
+            using (var fontTiny = new Font("Segoe UI", 5.8f, FontStyle.Regular))
             {
                 g.DrawArc(trackPen, 25, 25, 78, 78, -90, 360);
                 g.DrawArc(fiveHourPen, 25, 25, 78, 78, -90, fiveHour * 3.6f);
@@ -183,8 +184,9 @@ namespace CodexUsageMonitorV2
                 g.DrawArc(weeklyPen, 41, 41, 46, 46, -90, weekly * 3.6f);
                 g.FillEllipse(centerBrush, 53, 53, 22, 22);
                 DrawCodexMark(g, 64, 64, 8f);
-                g.DrawString("5h " + fiveHour + "%", fontSmall, textBrush, 8, 106);
-                g.DrawString("W " + weekly + "%", fontSmall, textBrush, 72, 106);
+                g.DrawString("5h " + fiveHour + "%", fontSmall, textBrush, 8, 101);
+                g.DrawString("W " + weekly + "%", fontSmall, textBrush, 72, 101);
+                DrawSupplementaryLine(g, fontTiny, textBrush, 115);
                 g.DrawString("x", fontSmall, closeBrush, 113, 3);
             }
         }
@@ -199,6 +201,7 @@ namespace CodexUsageMonitorV2
             using (var fiveHourBrush = new SolidBrush(palette.GetFiveHourColor(fiveHour)))
             using (var weeklyBrush = new SolidBrush(palette.GetWeeklyColor(weekly)))
             using (var font = new Font("Segoe UI", 8f, FontStyle.Bold))
+            using (var fontTiny = new Font("Segoe UI", 5.8f, FontStyle.Regular))
             using (var centerBrush = new SolidBrush(palette.GetColor("CenterFill")))
             {
                 DrawProgressBar(g, trackBrush, fiveHourBrush, 18, 30, 92, 16, fiveHour);
@@ -207,6 +210,7 @@ namespace CodexUsageMonitorV2
                 DrawCodexMark(g, 64, 64, 8f);
                 g.DrawString("5h " + fiveHour + "%", font, textBrush, 18, 15);
                 g.DrawString("W " + weekly + "%", font, textBrush, 18, 77);
+                DrawSupplementaryLine(g, fontTiny, textBrush, 113);
                 g.DrawString("x", font, closeBrush, 113, 3);
             }
         }
@@ -218,6 +222,7 @@ namespace CodexUsageMonitorV2
             using (var textBrush = new SolidBrush(palette.GetColor("Text")))
             using (var closeBrush = new SolidBrush(palette.GetColor("Close")))
             using (var font = new Font("Segoe UI", 7.5f, FontStyle.Bold))
+            using (var fontTiny = new Font("Segoe UI", 5.8f, FontStyle.Regular))
             using (var centerBrush = new SolidBrush(palette.GetColor("CenterFill")))
             {
                 DrawMeter(g, new RectangleF(14, 22, 44, 34), fiveHour, palette.GetFiveHourColor(fiveHour));
@@ -226,6 +231,7 @@ namespace CodexUsageMonitorV2
                 DrawCodexMark(g, 64, 64, 8f);
                 g.DrawString("5h " + fiveHour + "%", font, textBrush, 12, 84);
                 g.DrawString("W " + weekly + "%", font, textBrush, 72, 84);
+                DrawSupplementaryLine(g, fontTiny, textBrush, 110);
                 g.DrawString("x", font, closeBrush, 113, 3);
             }
         }
@@ -241,6 +247,7 @@ namespace CodexUsageMonitorV2
             using (var fiveHourBrush = new SolidBrush(palette.GetFiveHourColor(fiveHour)))
             using (var weeklyBrush = new SolidBrush(palette.GetWeeklyColor(weekly)))
             using (var font = new Font("Segoe UI", 7.5f, FontStyle.Bold))
+            using (var fontTiny = new Font("Segoe UI", 5.8f, FontStyle.Regular))
             using (var centerBrush = new SolidBrush(palette.GetColor("CenterFill")))
             {
                 DrawBattery(g, outlinePen, trackBrush, fiveHourBrush, 18, 34, 88, 18, fiveHour);
@@ -249,8 +256,63 @@ namespace CodexUsageMonitorV2
                 DrawCodexMark(g, 64, 64, 8f);
                 g.DrawString("5h " + fiveHour + "%", font, textBrush, 18, 18);
                 g.DrawString("W " + weekly + "%", font, textBrush, 18, 76);
+                DrawSupplementaryLine(g, fontTiny, textBrush, 112);
                 g.DrawString("x", font, closeBrush, 113, 3);
             }
+        }
+
+        private void DrawSupplementaryLine(Graphics g, Font font, Brush brush, float y)
+        {
+            var text = BuildSupplementaryText(33, false);
+            if (string.IsNullOrEmpty(text))
+            {
+                return;
+            }
+
+            var size = g.MeasureString(text, font);
+            g.DrawString(text, font, brush, Math.Max(2f, 64f - size.Width / 2f), y);
+        }
+
+        private string BuildSupplementaryText(int maxLength, bool includeZeroCredits)
+        {
+            if (snapshot == null)
+            {
+                return null;
+            }
+
+            var fiveHourReset = UsageParser.CompactResetText(snapshot.fiveHourResetText);
+            var weeklyReset = UsageParser.CompactResetText(snapshot.weeklyResetText);
+            var credits = NormalizeCredits(snapshot.creditsRemaining);
+            var builder = string.Empty;
+
+            if (!string.IsNullOrEmpty(fiveHourReset) || !string.IsNullOrEmpty(weeklyReset))
+            {
+                builder = "R " +
+                    (string.IsNullOrEmpty(fiveHourReset) ? "--" : fiveHourReset) +
+                    "/" +
+                    (string.IsNullOrEmpty(weeklyReset) ? "--" : weeklyReset);
+            }
+            if (!string.IsNullOrEmpty(credits) && (includeZeroCredits || !IsZeroCredits(credits)))
+            {
+                builder = string.IsNullOrEmpty(builder) ? "C" + credits : builder + " C" + credits;
+            }
+
+            if (builder.Length <= maxLength)
+            {
+                return builder;
+            }
+            return builder.Substring(0, maxLength - 1) + "…";
+        }
+
+        private static string NormalizeCredits(string value)
+        {
+            return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+        }
+
+        private static bool IsZeroCredits(string value)
+        {
+            decimal parsed;
+            return decimal.TryParse(value, out parsed) && parsed == 0m;
         }
 
         private static void DrawProgressBar(Graphics g, Brush trackBrush, Brush fillBrush, int x, int y, int width, int height, int percent)

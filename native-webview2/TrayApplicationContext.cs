@@ -581,22 +581,38 @@ namespace CodexUsageMonitorV2
             if (lastSnapshot == null)
             {
                 notifyIcon.Text = TruncateTooltip(
-                    AppInfo.Name + "|5h-- W--|Unever|" + currentStatus + "|" + autoText);
+                    "Codex V2|5h-- W--|Unever|" + currentStatus + "|" + autoText);
                 return;
             }
 
-            DateTime updated;
-            var updatedText = DateTime.TryParseExact(
-                lastSnapshot.updatedAt,
-                "yyyy-MM-dd HH:mm:ss",
-                CultureInfo.InvariantCulture,
-                DateTimeStyles.AssumeLocal,
-                out updated)
-                ? updated.ToString("MM-dd/HH:mm", CultureInfo.InvariantCulture)
-                : "unknown";
+            var resetText = BuildResetTooltipText(lastSnapshot);
+            var creditsText = BuildCreditsTooltipText(lastSnapshot);
             notifyIcon.Text = TruncateTooltip(
-                AppInfo.Name + "|5h" + lastSnapshot.fiveHourRemaining + "% W" + lastSnapshot.weeklyRemaining +
-                "%|U" + updatedText + "|" + currentStatus + "|" + autoText);
+                "Codex V2|5h" + lastSnapshot.fiveHourRemaining + " W" + lastSnapshot.weeklyRemaining +
+                resetText + creditsText + "|" + autoText);
+        }
+
+        private static string BuildResetTooltipText(UsageSnapshot snapshot)
+        {
+            var fiveHourReset = UsageParser.CompactResetText(snapshot.fiveHourResetText);
+            var weeklyReset = UsageParser.CompactResetText(snapshot.weeklyResetText);
+            if (string.IsNullOrEmpty(fiveHourReset) && string.IsNullOrEmpty(weeklyReset))
+            {
+                return string.Empty;
+            }
+            return "|R" +
+                (string.IsNullOrEmpty(fiveHourReset) ? "--" : fiveHourReset) +
+                "/" +
+                (string.IsNullOrEmpty(weeklyReset) ? "--" : weeklyReset);
+        }
+
+        private static string BuildCreditsTooltipText(UsageSnapshot snapshot)
+        {
+            if (string.IsNullOrWhiteSpace(snapshot.creditsRemaining))
+            {
+                return string.Empty;
+            }
+            return "|C" + snapshot.creditsRemaining.Trim();
         }
 
         private void UpdateUsageIcon()
