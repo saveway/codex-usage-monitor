@@ -8,10 +8,15 @@
     <LangVersion>latest</LangVersion>
     <RootNamespace>CodexUsageMonitorV2</RootNamespace>
     <AssemblyName>CodexUsageMonitorV2</AssemblyName>
-    <Version>2.0.0-preview.1</Version>
-    <AssemblyVersion>2.0.0.1</AssemblyVersion>
-    <FileVersion>2.0.0.1</FileVersion>
-    <InformationalVersion>2.0.0-preview.1</InformationalVersion>
+    <VersionBase>2.0.0</VersionBase>
+    <PreviewNumber>3</PreviewNumber>
+    <PreviewVersion>$(VersionBase)-preview.$(PreviewNumber)</PreviewVersion>
+    <NumericVersion>$(VersionBase).$(PreviewNumber)</NumericVersion>
+    <Version>$(PreviewVersion)</Version>
+    <AssemblyVersion>$(NumericVersion)</AssemblyVersion>
+    <FileVersion>$(NumericVersion)</FileVersion>
+    <InformationalVersion>$(PreviewVersion)</InformationalVersion>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <Product>Codex Usage Monitor V2 WebView2 Native Preview</Product>
     <ApplicationIcon>app.ico</ApplicationIcon>
   </PropertyGroup>

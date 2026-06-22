@@ -177,13 +177,11 @@ jobs:
           body: |
             ## WebView2 Native Preview
 
-            ### What's new in preview.2
+            ### What's new in preview.3
 
-            - Auto refresh option added.
-            - Auto refresh is Default OFF.
-            - Only 10/15/30/60 minute intervals are available.
-            - The next refresh time is shown in the tray tooltip.
-            - A manual `Fetch now` collision guard prevents overlapping collection.
+            - About, ProductVersion, and package version now consistently identify `v2.0.0-preview.3`.
+            - Version metadata now has one project-level source instead of a separate UI hardcode.
+            - Auto refresh remains opt-in and Default OFF, with 10/15/30/60 minute intervals only.
             - Login and session data remain local in `%LOCALAPPDATA%\CodexUsageMonitorV2`.
             - This is still a preview; no installer or widget UI is included yet.
 

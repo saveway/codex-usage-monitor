@@ -4,7 +4,7 @@ This folder contains a release-candidate preview of a small native Windows versi
 
 ## Preview status
 
-The `v2.0.0-preview.2` preview has been verified with a real visible ChatGPT login, persistent WebView2 session, authenticated usage-page parsing, opt-in automatic refresh, tray menu operation, cache cleanup, stable exit, and a clean GitHub Actions artifact. It is still labeled **preview** because it has no widget, installer, startup registration, code signing, or broad multi-machine compatibility testing.
+The `v2.0.0-preview.3` preview has been verified with a real visible ChatGPT login, persistent WebView2 session, authenticated usage-page parsing, opt-in automatic refresh, tray menu operation, cache cleanup, stable exit, and a clean GitHub Actions artifact. It is still labeled **preview** because it has no widget, installer, startup registration, code signing, or broad multi-machine compatibility testing.
 
 ## Design decision
 
@@ -19,7 +19,7 @@ Using .NET Framework 4.8 is practical for this prototype and keeps the app binar
 ## Current features
 
 - A self-designed teal gauge icon is embedded in the EXE and used by the tray and app windows. It does not use an OpenAI, ChatGPT, or Codex logo or trademark artwork.
-- This document describes the `v2.0.0-preview.2` prerelease, which adds optional Auto refresh to the WebView2 Native Preview line. The current executable's About dialog and file metadata still display the earlier internal version `v2.0.0-preview.1`; the GitHub tag and package version are `v2.0.0-preview.2`.
+- This document describes the `v2.0.0-preview.3` prerelease. About and window UI read the assembly informational version generated from the project-level `PreviewVersion`, so the UI and ProductVersion use the same preview version. Windows FileVersion uses the corresponding numeric value `2.0.0.3`.
 - Notification-area icon with `Open/Login usage page`, `Fetch now`, `Reload saved data`, `Open data file`, `Open log`, `Clear WebView2 cache`, and `Exit`.
 - An `Auto refresh` submenu offers `Off`, `10 minutes`, `15 minutes`, `30 minutes`, and `60 minutes`. It is Off by default and never offers an interval shorter than 10 minutes.
 - An `About` menu opens app name, preview version, unofficial status, dependency summary, local data location, and GitHub repository information.
