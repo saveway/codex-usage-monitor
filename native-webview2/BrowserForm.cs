@@ -14,6 +14,7 @@ namespace CodexUsageMonitorV2
         private const string UsageUrl = "https://chatgpt.com/codex/cloud/settings/analytics#usage";
         private readonly WebView2 webView;
         private readonly ToolStripStatusLabel statusLabel;
+        private readonly Icon windowIcon;
         private bool allowClose;
         private bool initialized;
         private bool fetchAfterNavigation;
@@ -24,11 +25,12 @@ namespace CodexUsageMonitorV2
 
         public BrowserForm()
         {
-            Text = "Codex Usage Monitor V2 - Open/Login";
+            Text = AppInfo.Name + " " + AppInfo.Version + " - Usage";
             Width = 1120;
             Height = 820;
             StartPosition = FormStartPosition.CenterScreen;
-            Icon = SystemIcons.Application;
+            windowIcon = AppIcon.Create();
+            Icon = windowIcon;
 
             var statusStrip = new StatusStrip();
             statusLabel = new ToolStripStatusLabel("Ready. Open the usage page or sign in.");
@@ -38,6 +40,7 @@ namespace CodexUsageMonitorV2
             Controls.Add(webView);
             Controls.Add(statusStrip);
             FormClosing += HandleFormClosing;
+            FormClosed += (sender, args) => windowIcon.Dispose();
         }
 
         public async Task OpenAsync(bool fetchNow)
@@ -99,8 +102,7 @@ namespace CodexUsageMonitorV2
                 AppLogger.Write("WebView2 Runtime missing: " + ex.Message);
                 SetStatus(AppStatusKind.Error, "WebView2 Runtime is not installed.", true);
                 var result = MessageBox.Show(
-                    "Microsoft Edge WebView2 Runtime is required.\n\n" +
-                    "Install the Evergreen WebView2 Runtime, then restart this app.\n\n" +
+                    AppInfo.RuntimeRequiredMessage + "\n\n" +
                     "Open the Microsoft download page now?",
                     "WebView2 Runtime required",
                     MessageBoxButtons.YesNo,
@@ -114,10 +116,11 @@ namespace CodexUsageMonitorV2
             catch (Exception ex)
             {
                 AppLogger.Write("WebView2 initialization failed: " + ex);
-                SetStatus(AppStatusKind.Error, "WebView2 could not start. See the log for details.", true);
+                SetStatus(AppStatusKind.Error, "Microsoft Edge WebView2 Runtime could not be initialized.", true);
                 MessageBox.Show(
-                    "WebView2 could not start.\n\n" + ex.Message + "\n\nLog: " + AppPaths.LogPath,
-                    "Codex Usage Monitor V2",
+                    AppInfo.RuntimeRequiredMessage + "\n\n" +
+                    "Detailed technical information was written only to the log:\n" + AppPaths.LogPath,
+                    AppInfo.Name,
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
                 return false;

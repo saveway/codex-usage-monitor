@@ -8,6 +8,12 @@
     <LangVersion>latest</LangVersion>
     <RootNamespace>CodexUsageMonitorV2</RootNamespace>
     <AssemblyName>CodexUsageMonitorV2</AssemblyName>
+    <Version>2.0.0-preview.1</Version>
+    <AssemblyVersion>2.0.0.1</AssemblyVersion>
+    <FileVersion>2.0.0.1</FileVersion>
+    <InformationalVersion>2.0.0-preview.1</InformationalVersion>
+    <Product>Codex Usage Monitor V2 WebView2 Native Preview</Product>
+    <ApplicationIcon>app.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -17,6 +23,9 @@
 
   <ItemGroup>
     <Reference Include="System.Web.Extensions" />
+    <EmbeddedResource Include="app.ico">
+      <LogicalName>CodexUsageMonitorV2.app.ico</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
 
   <Target Name="PrepareDeployment" AfterTargets="Build">

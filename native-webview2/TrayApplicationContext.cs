@@ -12,6 +12,7 @@ namespace CodexUsageMonitorV2
     {
         private readonly NotifyIcon notifyIcon;
         private readonly BrowserForm browserForm;
+        private readonly Icon appIcon;
         private UsageSnapshot lastSnapshot;
         private string currentStatus = "No data";
         private bool exiting;
@@ -23,6 +24,7 @@ namespace CodexUsageMonitorV2
             var cleanup = ProfileCacheCleaner.Clean();
             AppLogger.Write("Startup cache cleanup removed " + cleanup.RemovedBytes + " bytes.");
 
+            appIcon = AppIcon.Create();
             browserForm = new BrowserForm();
             browserForm.UsageUpdated += HandleUsageUpdated;
             browserForm.StatusChanged += HandleStatusChanged;
@@ -36,12 +38,13 @@ namespace CodexUsageMonitorV2
             menu.Items.Add("Open log", null, (sender, args) => OpenFile(AppPaths.LogPath, "The log file does not exist yet."));
             menu.Items.Add("Clear WebView2 cache", null, (sender, args) => ClearWebView2Cache());
             menu.Items.Add(new ToolStripSeparator());
+            menu.Items.Add("About", null, (sender, args) => ShowAbout());
             menu.Items.Add("Exit", null, (sender, args) => ExitApplication());
 
             notifyIcon = new NotifyIcon
             {
-                Icon = SystemIcons.Information,
-                Text = "5h -- | W -- | Never | No data",
+                Icon = appIcon,
+                Text = AppInfo.Name + " | 5h -- | W -- | Never | No data",
                 ContextMenuStrip = menu,
                 Visible = true
             };
@@ -76,6 +79,15 @@ namespace CodexUsageMonitorV2
             catch (Exception ex)
             {
                 AppLogger.Write("Tray icon cleanup failed: " + ex.Message);
+            }
+
+            try
+            {
+                appIcon.Dispose();
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Write("Application icon cleanup failed: " + ex.Message);
             }
 
             try
@@ -189,7 +201,7 @@ namespace CodexUsageMonitorV2
         {
             if (lastSnapshot == null)
             {
-                notifyIcon.Text = TruncateTooltip("5h -- | W -- | Never | " + currentStatus);
+                notifyIcon.Text = TruncateTooltip(AppInfo.Name + " | 5h -- | W -- | Never | " + currentStatus);
                 return;
             }
 
@@ -203,8 +215,16 @@ namespace CodexUsageMonitorV2
                 ? updated.ToString("MM-dd HH:mm", CultureInfo.InvariantCulture)
                 : "Unknown time";
             notifyIcon.Text = TruncateTooltip(
-                "5h " + lastSnapshot.fiveHourRemaining + "% | W " + lastSnapshot.weeklyRemaining +
+                AppInfo.Name + " | 5h " + lastSnapshot.fiveHourRemaining + "% | W " + lastSnapshot.weeklyRemaining +
                 "% | " + updatedText + " | " + currentStatus);
+        }
+
+        private static void ShowAbout()
+        {
+            using (var form = new AboutForm())
+            {
+                form.ShowDialog();
+            }
         }
 
         private static string CompactStatus(AppStatusEventArgs status)

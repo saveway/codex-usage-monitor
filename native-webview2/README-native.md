@@ -18,7 +18,10 @@ Using .NET Framework 4.8 is practical for this prototype and keeps the app binar
 
 ## Current features
 
+- A self-designed teal gauge icon is embedded in the EXE and used by the tray and app windows. It does not use an OpenAI, ChatGPT, or Codex logo or trademark artwork.
+- File/product metadata and the UI identify this build as `v2.0.0-preview.1` and `WebView2 Native Preview`.
 - Notification-area icon with `Open/Login usage page`, `Fetch now`, `Reload saved data`, `Open data file`, `Open log`, `Clear WebView2 cache`, and `Exit`.
+- An `About` menu opens app name, preview version, unofficial status, dependency summary, local data location, and GitHub repository information.
 - The tray tooltip shows the last saved 5-hour percentage, weekly percentage, update time, and compact status. It uses a short format such as `5h 00% | W 00% | 06-22 12:34 | Saved` to remain within the Windows tooltip limit.
 - A visible WebView2 window opens `https://chatgpt.com/codex/cloud/settings/analytics#usage`.
 - Login happens only on the real ChatGPT/OpenAI page shown in WebView2.
@@ -26,6 +29,7 @@ Using .NET Framework 4.8 is practical for this prototype and keeps the app binar
 - `Fetch now` reads `document.body.innerText` after navigation, parses the 5-hour and weekly remaining percentages, and writes `codex-usage.json`.
 - Because the usage page is rendered as a single-page application, `Fetch now` waits up to 30 seconds for the usage labels instead of reading the body immediately after the navigation event.
 - The window status bar and tray notifications distinguish login required, page access failure, network failure, missing WebView2 Runtime, parse failure, and successful collection.
+- Missing or failed WebView2 Runtime initialization shows a user-facing install/update/repair message without exposing an exception stack. Detailed technical exceptions are written only to the local log.
 - A failed parse writes only `codex-usage-debug-status.txt`, containing allowlisted host/category and present/absent flags for expected labels. It never contains page excerpts, percentages, email addresses, cookies, or tokens.
 - Logs are written to `codex-usage-monitor-v2.log` and rotated at approximately 2 MB, retaining one `.1` backup.
 - Startup and exit remove selected cache-only directories under WebView2's `EBWebView` data root, including `Cache`, `Code Cache`, `GPUCache`, shader caches, service-worker cache storage, and Crashpad reports. Cookies, Local Storage, IndexedDB, and session storage are not selected for deletion.
@@ -53,14 +57,16 @@ The initial x64 Release build contains five files:
 
 | File | Bytes |
 |---|---:|
-| `CodexUsageMonitorV2.exe` | 35,840 |
+| `CodexUsageMonitorV2.exe` | 66,560 |
 | `CodexUsageMonitorV2.exe.config` | 174 |
 | `Microsoft.Web.WebView2.Core.dll` | 698,248 |
 | `Microsoft.Web.WebView2.WinForms.dll` | 38,792 |
 | `runtimes\win-x64\native\WebView2Loader.dll` | 163,208 |
-| **Total** | **936,262 (about 0.89 MiB)** |
+| **Total** | **966,982 (about 0.92 MiB)** |
 
 The normal build directory is slightly larger because NuGet also copies assemblies that this WinForms-only package does not need. Use the `deploy` directory for size evaluation.
+
+The committed `app.ico` contains six Windows icon sizes and is reproducible with `generate-app-icon.ps1`. The ICO is embedded in the EXE, so it is not an additional deployment file.
 
 ## Run
 
@@ -72,6 +78,7 @@ The remaining menu commands behave as follows:
 - `Open data file` opens the saved JSON in Notepad when it exists.
 - `Open log` opens the local v2 log in Notepad.
 - `Clear WebView2 cache` removes only the allowlisted cache directories described above and preserves login-storage candidates.
+- `About` displays preview identity, version, WebView2 dependency, local data location, and the project repository.
 - `Exit` closes the WebView2 form, hides and disposes the notification icon, runs final cache cleanup, and exits without PID or lock files.
 
 There is no automatic or periodic fetch in this prototype. Usage changes only when `Fetch now` succeeds or the local display is refreshed with `Reload saved data`.
@@ -174,7 +181,7 @@ V2 remains a prototype and is distributed only as a manually built Actions artif
 - Automatic periodic collection.
 - Credits and reset-time parsing.
 - Installer, Windows startup registration, code signing, stable v2 Release publishing, and non-preview Release attachment.
-- Localization and polished icons.
+- Localization beyond the current English UI.
 - Automated end-to-end testing against an authenticated account; authenticated validation is currently an explicit manual test.
 - Resilience against future ChatGPT wording, localization, routing, or DOM changes beyond the current text parser.
 
