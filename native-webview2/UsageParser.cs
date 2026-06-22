@@ -27,7 +27,7 @@ namespace CodexUsageMonitorV2
             RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
         private static readonly Regex CreditRegex = new Regex(
-            @"(?:남은\s*크레딧|remaining\s+credits|credits?\s+remaining)\s*[:：]?\s*([0-9][0-9,]*(?:\.[0-9]+)?)",
+            @"(?:(?:남은\s*)?크레딧|remaining\s+credits|credits?\s+remaining)\s*[:：]?\s*([0-9][0-9,]*(?:\.[0-9]+)?)",
             RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
         private static readonly Regex CompactKoreanDateRegex = new Regex(

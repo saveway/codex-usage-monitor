@@ -263,7 +263,7 @@ namespace CodexUsageMonitorV2
 
         private void DrawSupplementaryLine(Graphics g, Font font, Brush brush, float y)
         {
-            var text = BuildSupplementaryText(33, false);
+            var text = BuildSupplementaryText(42, false);
             if (string.IsNullOrEmpty(text))
             {
                 return;
@@ -276,6 +276,10 @@ namespace CodexUsageMonitorV2
         private string BuildSupplementaryText(int maxLength, bool includeZeroCredits)
         {
             if (snapshot == null)
+            {
+                return null;
+            }
+            if (logicalWidgetSize < 256)
             {
                 return null;
             }
