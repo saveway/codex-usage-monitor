@@ -9,7 +9,7 @@
 
 v2는 v1을 대체하는 정식 기본 배포가 아닙니다. 자세한 실행·보안·제한사항은 [WebView2 native preview 문서](native-webview2/README-native.md)를 참고하십시오.
 
-v2 Preview는 installer가 아닌 portable ZIP 배포본입니다. ZIP 안에서 바로 실행하거나 임시 폴더에서 실행하지 말고, 먼저 계속 사용할 영구 폴더에 전체 압축을 푼 뒤 `CodexUsageMonitorV2.exe`를 실행하십시오. 임시 위치에서 실행하면 재실행, 경로 유지 또는 향후 자동 시작 구성에 문제가 생길 수 있습니다.
+v2 Preview는 installer가 아닌 portable ZIP 배포본이며 아직 widget을 포함하지 않습니다. ZIP 안에서 바로 실행하거나 임시 폴더에서 실행하지 말고, 먼저 계속 사용할 영구 폴더에 전체 압축을 푼 뒤 `CodexUsageMonitorV2.exe`를 실행하십시오. 임시 위치에서 실행하면 재실행, 경로 유지 또는 향후 자동 시작 구성에 문제가 생길 수 있습니다.
 
 Release 태그는 분리되어 있습니다. v1 Full/Lite workflow는 `v1.*`, v2 preview workflow는 `v2.*-preview.*` 태그에만 반응하며 두 workflow 모두 수동 실행을 지원합니다.
 
