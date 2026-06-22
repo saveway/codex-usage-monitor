@@ -9,6 +9,8 @@
 
 V2 does not yet replace v1 as the default stable distribution. See the [WebView2 native preview documentation](native-webview2/README-native.md) for execution, security, and limitation details.
 
+V2 Preview is a portable ZIP, not an installer. Do not run it directly inside the archive or from a temporary directory. Extract the entire ZIP to a permanent directory of your choice, then run `CodexUsageMonitorV2.exe`. Running from a temporary location can break relaunching, path persistence, or a future startup configuration.
+
 Release tag ownership is separated: the v1 Full/Lite workflow responds only to `v1.*`, while the v2 preview workflow responds only to `v2.*-preview.*`. Both workflows retain manual dispatch support.
 
 An unofficial personal tool that displays values from the ChatGPT Codex usage page in the Windows 10/11 system tray and a desktop widget.

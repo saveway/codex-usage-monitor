@@ -121,7 +121,9 @@ LICENSE
 runtimes\win-x64\native\WebView2Loader.dll
 ```
 
-Extract the entire inner ZIP and run `CodexUsageMonitorV2.exe`. Do not move the EXE away from its DLLs and `runtimes` directory. The package does not include Edge/Chromium; the target PC must have Microsoft Edge WebView2 Evergreen Runtime. Manual workflow runs create an Actions artifact only. A matching `v2.*-preview.*` tag creates a GitHub prerelease and attaches the inner ZIP and SHA256 file; it does not alter v1 releases.
+This preview is distributed as a portable ZIP, not an installer. Extract the entire inner ZIP to a permanent directory of your choice before running `CodexUsageMonitorV2.exe`. Do not run it directly inside the archive or from a temporary extraction directory: that location may disappear and prevent reliable relaunching, path persistence, or a future startup configuration. Do not move the EXE away from its DLLs and `runtimes` directory.
+
+The package does not include Edge/Chromium; the target PC must have Microsoft Edge WebView2 Evergreen Runtime. Manual workflow runs create an Actions artifact only. A matching `v2.*-preview.*` tag creates a GitHub prerelease and attaches the inner ZIP and SHA256 file; it does not alter v1 releases.
 
 The inner ZIP is approximately 0.3 MiB because it contains only the compressed application and WebView2 loader libraries. Microsoft Edge WebView2 Runtime provides the browser engine separately and is not bundled. Extracted files are approximately 0.9 MiB; the installed WebView2 Runtime and local user profile are separate from these package sizes.
 
