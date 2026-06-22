@@ -15,6 +15,8 @@ namespace CodexUsageMonitorV2
         public int? widgetY { get; set; }
         public string graphStyle { get; set; }
         public Dictionary<string, string> colors { get; set; }
+        public string acknowledgedFiveHourAlertKey { get; set; }
+        public string acknowledgedWeeklyAlertKey { get; set; }
     }
 
     internal static class AppSettingsStore

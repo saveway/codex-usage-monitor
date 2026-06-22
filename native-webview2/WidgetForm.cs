@@ -220,8 +220,8 @@ namespace CodexUsageMonitorV2
                 var iconAnchor = new PointF(widgetCenterX, (fiveHourBar.Bottom + weeklyTextTop) / 2f);
                 g.FillEllipse(centerBrush, iconAnchor.X - 11, iconAnchor.Y - 11, 22, 22);
                 DrawCodexMark(g, iconAnchor.X, iconAnchor.Y, GetLogicalIconSize(WidgetGraphStyle.Bars));
-                DrawUsageTextLine(g, BuildFiveHourLine(fiveHour), font, textBrush, CenterX(fiveHourBar), 14, 6, 122);
-                DrawUsageTextLine(g, BuildWeeklyLine(weekly), font, textBrush, CenterX(weeklyBar), weeklyTextTop, 6, 122);
+                DrawFiveHourUsageTextLine(g, font, textBrush, CenterX(fiveHourBar), 14, 6, 122);
+                DrawWeeklyUsageTextLine(g, font, textBrush, CenterX(weeklyBar), weeklyTextTop, 6, 122);
                 g.DrawString("x", font, closeBrush, 113, 3);
             }
         }
@@ -275,16 +275,61 @@ namespace CodexUsageMonitorV2
                 DrawBattery(g, outlinePen, trackBrush, weeklyBrush, weeklyBody, weekly);
                 g.FillEllipse(centerBrush, iconAnchor.X - 11, iconAnchor.Y - 11, 22, 22);
                 DrawCodexMark(g, iconAnchor.X, iconAnchor.Y, GetLogicalIconSize(WidgetGraphStyle.Battery));
-                DrawUsageTextLine(g, BuildFiveHourLine(fiveHour), font, textBrush, bodyCenterX, fiveHourTextTop, 6, 118);
-                DrawUsageTextLine(g, BuildWeeklyLine(weekly), font, textBrush, CenterX(weeklyBody), weeklyTextTop, 6, 118);
+                DrawFiveHourUsageTextLine(g, font, textBrush, bodyCenterX, fiveHourTextTop, 6, 118);
+                DrawWeeklyUsageTextLine(g, font, textBrush, CenterX(weeklyBody), weeklyTextTop, 6, 118);
                 g.DrawString("x", font, closeBrush, 113, 3);
             }
         }
 
         private void DrawUsageLines(Graphics g, Brush brush, Font baseFont, float centerX, float firstY, float secondY, float minX, float maxX)
         {
-            DrawUsageTextLine(g, BuildFiveHourLine(Clamp(snapshot.fiveHourRemaining)), baseFont, brush, centerX, firstY, minX, maxX);
-            DrawUsageTextLine(g, BuildWeeklyLine(Clamp(snapshot.weeklyRemaining)), baseFont, brush, centerX, secondY, minX, maxX);
+            DrawFiveHourUsageTextLine(g, baseFont, brush, centerX, firstY, minX, maxX);
+            DrawWeeklyUsageTextLine(g, baseFont, brush, centerX, secondY, minX, maxX);
+        }
+
+        private void DrawFiveHourUsageTextLine(Graphics g, Font baseFont, Brush normalBrush, float centerX, float y, float minX, float maxX)
+        {
+            var percent = Clamp(snapshot.fiveHourRemaining);
+            DrawUsageTextLineWithAlert(g, BuildFiveHourLine(percent), baseFont, normalBrush, false, percent, centerX, y, minX, maxX);
+        }
+
+        private void DrawWeeklyUsageTextLine(Graphics g, Font baseFont, Brush normalBrush, float centerX, float y, float minX, float maxX)
+        {
+            var percent = Clamp(snapshot.weeklyRemaining);
+            DrawUsageTextLineWithAlert(g, BuildWeeklyLine(percent), baseFont, normalBrush, true, percent, centerX, y, minX, maxX);
+        }
+
+        private void DrawUsageTextLineWithAlert(
+            Graphics g,
+            string text,
+            Font baseFont,
+            Brush normalBrush,
+            bool weekly,
+            int percent,
+            float centerX,
+            float y,
+            float minX,
+            float maxX)
+        {
+            SolidBrush alertBrush = null;
+            var brush = normalBrush;
+            if (percent >= 100)
+            {
+                alertBrush = new SolidBrush(palette.GetColor(weekly ? "WeekCritical" : "FiveCritical"));
+                brush = alertBrush;
+            }
+
+            try
+            {
+                DrawUsageTextLine(g, text, baseFont, brush, centerX, y, minX, maxX);
+            }
+            finally
+            {
+                if (alertBrush != null)
+                {
+                    alertBrush.Dispose();
+                }
+            }
         }
 
         private void DrawUsageTextLine(Graphics g, string text, Font baseFont, Brush brush, float centerX, float y, float minX, float maxX)

@@ -23,6 +23,7 @@ namespace CodexUsageMonitorV2
         private readonly AppSettings settings;
         private readonly ThemePalette palette;
         private readonly ContextMenuStrip menu;
+        private readonly ToolStripMenuItem acknowledgeAlertMenuItem;
         private UsageSnapshot lastSnapshot;
         private WidgetForm widgetForm;
         private Icon usageIcon;
@@ -33,6 +34,10 @@ namespace CodexUsageMonitorV2
         private bool exiting;
         private bool disposed;
         private WidgetGraphStyle currentGraphStyle;
+        private string currentFiveHourAlertKey;
+        private string currentWeeklyAlertKey;
+        private string lastNotifiedFiveHourAlertKey;
+        private string lastNotifiedWeeklyAlertKey;
 
         public TrayApplicationContext()
         {
@@ -56,6 +61,10 @@ namespace CodexUsageMonitorV2
             menu.Items.Add(CreateGraphStyleMenu());
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add("Show widget", null, (sender, args) => ShowWidget(true));
+            acknowledgeAlertMenuItem = new ToolStripMenuItem("Acknowledge current alert");
+            acknowledgeAlertMenuItem.Click += (sender, args) => AcknowledgeCurrentAlert();
+            acknowledgeAlertMenuItem.Enabled = false;
+            menu.Items.Add(acknowledgeAlertMenuItem);
             menu.Items.Add("Reload saved data", null, (sender, args) => ReloadSavedData(true));
             menu.Items.Add("Open data file", null, (sender, args) => OpenFile(AppPaths.DataPath, "No usage data has been saved yet."));
             menu.Items.Add("Open log", null, (sender, args) => OpenFile(AppPaths.LogPath, "The log file does not exist yet."));
@@ -494,14 +503,18 @@ namespace CodexUsageMonitorV2
         {
             lastSnapshot = snapshot;
             currentStatus = "OK";
+            var zeroAlertShown = UpdateZeroAlertState(snapshot, true);
             UpdateTooltip();
             UpdateWidget();
-            notifyIcon.ShowBalloonTip(
-                4000,
-                "Codex usage updated",
-                "5-hour " + snapshot.fiveHourRemaining +
-                "% / Weekly " + snapshot.weeklyRemaining + "% remaining",
-                ToolTipIcon.Info);
+            if (!zeroAlertShown)
+            {
+                notifyIcon.ShowBalloonTip(
+                    4000,
+                    "Codex usage updated",
+                    "5-hour " + snapshot.fiveHourRemaining +
+                    "% / Weekly " + snapshot.weeklyRemaining + "% remaining",
+                    ToolTipIcon.Info);
+            }
         }
 
         private void HandleStatusChanged(object sender, AppStatusEventArgs status)
@@ -533,6 +546,7 @@ namespace CodexUsageMonitorV2
             {
                 lastSnapshot = null;
                 currentStatus = "nodata";
+                UpdateZeroAlertState(null, false);
                 UpdateTooltip();
                 UpdateWidget();
                 if (notify)
@@ -544,6 +558,7 @@ namespace CodexUsageMonitorV2
 
             lastSnapshot = snapshot;
             currentStatus = string.Equals(snapshot.status, "ok", StringComparison.OrdinalIgnoreCase) ? "saved" : "data";
+            UpdateZeroAlertState(snapshot, notify);
             UpdateTooltip();
             UpdateWidget();
             AppLogger.Write("Saved usage data reloaded without opening WebView2.");
@@ -569,6 +584,253 @@ namespace CodexUsageMonitorV2
                 "WebView2 cache cleanup",
                 "Removed " + cleanup.RemovedFiles + " cache files (" + FormatBytes(cleanup.RemovedBytes) + "). Login data was preserved.",
                 ToolTipIcon.Info);
+        }
+
+        private bool UpdateZeroAlertState(UsageSnapshot snapshot, bool notify)
+        {
+            currentFiveHourAlertKey = null;
+            currentWeeklyAlertKey = null;
+            if (snapshot == null)
+            {
+                UpdateAcknowledgeAlertMenu();
+                return false;
+            }
+
+            var fiveHourReached = IsGeneralLimitReached(snapshot.fiveHourRemaining, snapshot.fiveHourPercent);
+            var weeklyReached = IsGeneralLimitReached(snapshot.weeklyRemaining, snapshot.weeklyPercent);
+            if (fiveHourReached)
+            {
+                currentFiveHourAlertKey = BuildAlertKey("5H", snapshot.fiveHourResetText);
+            }
+            if (weeklyReached)
+            {
+                currentWeeklyAlertKey = BuildAlertKey("W", snapshot.weeklyResetText);
+            }
+
+            UpdateAcknowledgeAlertMenu();
+            if (!notify)
+            {
+                return false;
+            }
+
+            var lines = new List<string>();
+            if (ShouldNotifyFiveHourAlert())
+            {
+                lines.Add("5H usage reached 100%. Reset remaining: " + FormatFiveHourRemaining(snapshot.fiveHourResetText));
+                lastNotifiedFiveHourAlertKey = currentFiveHourAlertKey;
+            }
+            if (ShouldNotifyWeeklyAlert())
+            {
+                lines.Add("Weekly usage reached 100%. Reset remaining: " + FormatWeeklyRemaining(snapshot.weeklyResetText));
+                lastNotifiedWeeklyAlertKey = currentWeeklyAlertKey;
+            }
+
+            if (lines.Count == 0)
+            {
+                return false;
+            }
+
+            notifyIcon.ShowBalloonTip(
+                8000,
+                "Codex usage limit reached",
+                string.Join(Environment.NewLine, lines.ToArray()),
+                ToolTipIcon.Warning);
+            AppLogger.Write("Zero alert notification shown for " + string.Join(", ", new List<string>(GetCurrentAlertLabels()).ToArray()) + ".");
+            return true;
+        }
+
+        private void AcknowledgeCurrentAlert()
+        {
+            if (!HasPendingAcknowledgeAlert())
+            {
+                notifyIcon.ShowBalloonTip(2500, AppInfo.Name, "There is no current usage alert to acknowledge.", ToolTipIcon.Info);
+                return;
+            }
+
+            var labels = new List<string>();
+            if (IsActiveUnacknowledgedFiveHourAlert())
+            {
+                settings.acknowledgedFiveHourAlertKey = currentFiveHourAlertKey;
+                labels.Add("5H");
+            }
+            if (IsActiveUnacknowledgedWeeklyAlert())
+            {
+                settings.acknowledgedWeeklyAlertKey = currentWeeklyAlertKey;
+                labels.Add("Weekly");
+            }
+
+            try
+            {
+                SaveSettings();
+                UpdateAcknowledgeAlertMenu();
+                notifyIcon.ShowBalloonTip(
+                    3000,
+                    AppInfo.Name,
+                    "Acknowledged current alert: " + string.Join(", ", labels.ToArray()) + ".",
+                    ToolTipIcon.Info);
+                AppLogger.Write("Zero alert acknowledged: " + string.Join(", ", labels.ToArray()) + ".");
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Write("Zero alert acknowledgement could not be saved: " + ex.Message);
+                notifyIcon.ShowBalloonTip(4000, AppInfo.Name, "Alert acknowledgement could not be saved. See the log.", ToolTipIcon.Error);
+            }
+        }
+
+        private void UpdateAcknowledgeAlertMenu()
+        {
+            if (acknowledgeAlertMenuItem == null)
+            {
+                return;
+            }
+            acknowledgeAlertMenuItem.Enabled = HasPendingAcknowledgeAlert();
+        }
+
+        private bool HasPendingAcknowledgeAlert()
+        {
+            return IsActiveUnacknowledgedFiveHourAlert() || IsActiveUnacknowledgedWeeklyAlert();
+        }
+
+        private bool IsActiveUnacknowledgedFiveHourAlert()
+        {
+            return !string.IsNullOrEmpty(currentFiveHourAlertKey) &&
+                !string.Equals(settings.acknowledgedFiveHourAlertKey, currentFiveHourAlertKey, StringComparison.Ordinal);
+        }
+
+        private bool IsActiveUnacknowledgedWeeklyAlert()
+        {
+            return !string.IsNullOrEmpty(currentWeeklyAlertKey) &&
+                !string.Equals(settings.acknowledgedWeeklyAlertKey, currentWeeklyAlertKey, StringComparison.Ordinal);
+        }
+
+        private bool ShouldNotifyFiveHourAlert()
+        {
+            return IsActiveUnacknowledgedFiveHourAlert() &&
+                !string.Equals(lastNotifiedFiveHourAlertKey, currentFiveHourAlertKey, StringComparison.Ordinal);
+        }
+
+        private bool ShouldNotifyWeeklyAlert()
+        {
+            return IsActiveUnacknowledgedWeeklyAlert() &&
+                !string.Equals(lastNotifiedWeeklyAlertKey, currentWeeklyAlertKey, StringComparison.Ordinal);
+        }
+
+        private IEnumerable<string> GetCurrentAlertLabels()
+        {
+            if (!string.IsNullOrEmpty(currentFiveHourAlertKey))
+            {
+                yield return "5H";
+            }
+            if (!string.IsNullOrEmpty(currentWeeklyAlertKey))
+            {
+                yield return "Weekly";
+            }
+        }
+
+        private static bool IsGeneralLimitReached(int value, int? percent)
+        {
+            return value >= 100 || (percent.HasValue && percent.Value >= 100);
+        }
+
+        private static string BuildAlertKey(string prefix, string resetText)
+        {
+            var compactReset = UsageParser.CompactResetText(resetText);
+            var resetKey = string.IsNullOrWhiteSpace(compactReset)
+                ? NormalizeAlertKeyPart(resetText)
+                : compactReset;
+            if (string.IsNullOrWhiteSpace(resetKey))
+            {
+                resetKey = "no-reset";
+            }
+            return prefix + ":" + resetKey;
+        }
+
+        private static string NormalizeAlertKeyPart(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return string.Empty;
+            }
+            return value.Trim().Replace(" ", string.Empty).Replace("\t", string.Empty).Replace("\r", string.Empty).Replace("\n", string.Empty);
+        }
+
+        private static string FormatFiveHourRemaining(string resetText)
+        {
+            DateTime resetAt;
+            var remaining = TryParseResetDateTime(resetText, out resetAt) ? resetAt - DateTime.Now : TimeSpan.Zero;
+            if (remaining < TimeSpan.Zero)
+            {
+                remaining = TimeSpan.Zero;
+            }
+            var totalHours = Math.Min(99, (int)Math.Floor(remaining.TotalHours));
+            return totalHours.ToString("00", CultureInfo.InvariantCulture) +
+                "시" + remaining.Minutes.ToString("00", CultureInfo.InvariantCulture) + "분";
+        }
+
+        private static string FormatWeeklyRemaining(string resetText)
+        {
+            DateTime resetAt;
+            var remaining = TryParseResetDateTime(resetText, out resetAt) ? resetAt - DateTime.Now : TimeSpan.Zero;
+            if (remaining < TimeSpan.Zero)
+            {
+                remaining = TimeSpan.Zero;
+            }
+            var totalDays = Math.Min(99, (int)Math.Floor(remaining.TotalDays));
+            return totalDays.ToString("00", CultureInfo.InvariantCulture) +
+                "일" + remaining.Hours.ToString("00", CultureInfo.InvariantCulture) + "시";
+        }
+
+        private static bool TryParseResetDateTime(string resetText, out DateTime resetAt)
+        {
+            resetAt = DateTime.MinValue;
+            if (string.IsNullOrWhiteSpace(resetText))
+            {
+                return false;
+            }
+
+            var text = System.Text.RegularExpressions.Regex.Replace(resetText, @"\s+", " ").Trim();
+            text = text.Replace("초기화", string.Empty).Trim();
+            var match = System.Text.RegularExpressions.Regex.Match(
+                text,
+                @"(?:(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})\.\s*)?(오전|오후|AM|PM)?\s*(\d{1,2}):(\d{2})",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+            if (!match.Success)
+            {
+                return false;
+            }
+
+            var now = DateTime.Now;
+            var year = match.Groups[1].Success ? int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture) : now.Year;
+            var month = match.Groups[2].Success ? int.Parse(match.Groups[2].Value, CultureInfo.InvariantCulture) : now.Month;
+            var day = match.Groups[3].Success ? int.Parse(match.Groups[3].Value, CultureInfo.InvariantCulture) : now.Day;
+            var marker = match.Groups[4].Value;
+            var hour = int.Parse(match.Groups[5].Value, CultureInfo.InvariantCulture);
+            var minute = int.Parse(match.Groups[6].Value, CultureInfo.InvariantCulture);
+
+            if (string.Equals(marker, "오전", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(marker, "AM", StringComparison.OrdinalIgnoreCase))
+            {
+                hour = hour == 12 ? 0 : hour;
+            }
+            else if (string.Equals(marker, "오후", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(marker, "PM", StringComparison.OrdinalIgnoreCase))
+            {
+                hour = hour == 12 ? 12 : hour + 12;
+            }
+
+            try
+            {
+                resetAt = new DateTime(year, month, day, hour, minute, 0);
+                if (!match.Groups[1].Success && resetAt < now)
+                {
+                    resetAt = resetAt.AddDays(1);
+                }
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         private void UpdateTooltip()
