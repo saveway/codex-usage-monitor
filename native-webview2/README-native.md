@@ -4,7 +4,7 @@ This folder contains a release-candidate preview of a small native Windows versi
 
 ## Preview status
 
-The preview has been verified with a real visible ChatGPT login, persistent WebView2 session, authenticated usage-page parsing, tray menu operation, cache cleanup, stable exit, and a clean GitHub Actions artifact. It is still labeled **preview** because it has no scheduler, widget, installer, startup registration, code signing, or broad multi-machine compatibility testing.
+The `v2.0.0-preview.2` preview has been verified with a real visible ChatGPT login, persistent WebView2 session, authenticated usage-page parsing, opt-in automatic refresh, tray menu operation, cache cleanup, stable exit, and a clean GitHub Actions artifact. It is still labeled **preview** because it has no widget, installer, startup registration, code signing, or broad multi-machine compatibility testing.
 
 ## Design decision
 
@@ -19,7 +19,7 @@ Using .NET Framework 4.8 is practical for this prototype and keeps the app binar
 ## Current features
 
 - A self-designed teal gauge icon is embedded in the EXE and used by the tray and app windows. It does not use an OpenAI, ChatGPT, or Codex logo or trademark artwork.
-- File/product metadata and the UI identify this build as `v2.0.0-preview.1` and `WebView2 Native Preview`.
+- This document describes the `v2.0.0-preview.2` prerelease, which adds optional Auto refresh to the WebView2 Native Preview line.
 - Notification-area icon with `Open/Login usage page`, `Fetch now`, `Reload saved data`, `Open data file`, `Open log`, `Clear WebView2 cache`, and `Exit`.
 - An `Auto refresh` submenu offers `Off`, `10 minutes`, `15 minutes`, `30 minutes`, and `60 minutes`. It is Off by default and never offers an interval shorter than 10 minutes.
 - An `About` menu opens app name, preview version, unofficial status, dependency summary, local data location, and GitHub repository information.
@@ -174,7 +174,7 @@ Trade-offs:
 
 - Requires .NET Framework 4.8 and Microsoft Edge WebView2 Runtime.
 - DOM text parsing can break when ChatGPT wording or layout changes.
-- This prototype has not yet reproduced v1's widget, graphs, colors, alerts, credits, reset-time parsing, or scheduling.
+- This prototype has not yet reproduced v1's widget, graphs, colors, alerts, credits, or reset-time parsing.
 - `Fetch now` currently keeps the browser visible by design.
 
 ### Distribution choices
@@ -183,7 +183,7 @@ Trade-offs:
 - **V1 Lite:** contains the v1 scripts without Chromium; requires Python and a separate Playwright Chromium installation.
 - **V2 WebView2 prototype:** contains a small .NET Framework WinForms EXE and WebView2 loader libraries; requires the Windows WebView2 Runtime but does not require Python, Playwright, or bundled Chromium.
 
-V2 remains a prototype and is distributed only as a manually built Actions artifact. It is not yet part of the tagged v1 Releases.
+V2 remains a preview. Manual workflow runs produce an Actions artifact, while matching `v2.*-preview.*` tags publish separate prereleases. It is not part of or a replacement for the tagged v1 Stable Releases.
 
 ## Unsupported in this preview
 

@@ -2,9 +2,12 @@
 
 [한국어 README](README.md)
 
-## WebView2 native preview
+## Recommended Choice
 
-A separate **WebView2 native preview** is available without bundling Python, Playwright, or Chromium. Its manually generated GitHub Actions artifact is approximately 0.3 MiB; see [native-webview2/README-native.md](native-webview2/README-native.md) for execution, security, and limitation details. It is not yet the default replacement for v1 or an official Release, so the existing v1 Full/Lite download instructions remain authoritative below.
+- **For the lightest and easiest version to try first, use the [v2.0.0-preview.2 WebView2 Native Preview](https://github.com/saveway/codex-usage-monitor/releases/tag/v2.0.0-preview.2).** It is approximately 0.3 MB, bundles no Python, Playwright, or Chromium, and uses Microsoft Edge WebView2 Runtime. It is still a preview, so use v1 Stable if you encounter problems.
+- **For the established stable approach, or if v2 does not work, use [v1.0.1 Stable](https://github.com/saveway/codex-usage-monitor/releases/tag/v1.0.1).** v1 Full is large because it includes Chromium but requires no Python installation. v1 Lite is small but requires Python and Playwright.
+
+V2 does not yet replace v1 as the default stable distribution. See the [WebView2 native preview documentation](native-webview2/README-native.md) for execution, security, and limitation details.
 
 Release tag ownership is separated: the v1 Full/Lite workflow responds only to `v1.*`, while the v2 preview workflow responds only to `v2.*-preview.*`. Both workflows retain manual dispatch support.
 
@@ -59,7 +62,7 @@ These public screenshots use example values and contain no real account data.
 
 ## Run the Windows Package from GitHub Releases
 
-Download either the Full or Lite package and its matching SHA256 file from the repository's [Releases](https://github.com/saveway/codex-usage-monitor/releases) page:
+Download either the Full or Lite package and its matching SHA256 file from the [v1.0.1 Stable Release](https://github.com/saveway/codex-usage-monitor/releases/tag/v1.0.1). For the smaller v2 preview, see [Recommended Choice](#recommended-choice) above.
 
 ```text
 CodexUsageMonitor-windows-full.zip
@@ -100,7 +103,7 @@ The distributed executable is not code-signed, so Windows SmartScreen may displa
 
 The ZIP distribution stores and transmits the same data as the source version. It uses no developer-operated server or telemetry. Login session data, usage, settings, and logs are stored locally in `%LOCALAPPDATA%\CodexUsageMonitor`. After exiting the app, delete this directory to remove local data created by the distribution.
 
-Manually dispatched Actions builds provide separate `CodexUsageMonitor-windows-full` and `CodexUsageMonitor-windows-lite` artifacts. Builds triggered by a `v*` tag automatically attach both ZIPs and their SHA256 files to a GitHub Release.
+Manually dispatched Actions builds provide separate `CodexUsageMonitor-windows-full` and `CodexUsageMonitor-windows-lite` artifacts. Builds triggered by a `v1.*` tag automatically attach both ZIPs and their SHA256 files to a GitHub Release.
 
 TODO: On Windows systems with Microsoft Edge installed, Playwright `channel="msedge"` could support a simpler Edge-based package without bundling Chromium. This requires thorough validation of the installed Edge/Playwright version combination, visible and headless operation, and persistent profile behavior before it can become a separate distribution option.
 
