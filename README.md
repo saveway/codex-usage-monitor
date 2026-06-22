@@ -6,6 +6,8 @@
 
 Python·Playwright·Chromium을 포함하지 않고 Windows WebView2 Runtime을 사용하는 별도 **WebView2 native preview**를 제공하고 있습니다. GitHub Actions의 수동 artifact는 약 0.3MiB이며 자세한 실행·보안·제한사항은 [native-webview2/README-native.md](native-webview2/README-native.md)를 참고하십시오. 아직 v1을 대체하는 기본 배포나 정식 Release가 아니므로 기존 v1 Full/Lite 다운로드 안내는 아래 내용을 따릅니다.
 
+Release 태그는 분리되어 있습니다. v1 Full/Lite workflow는 `v1.*`, v2 preview workflow는 `v2.*-preview.*` 태그에만 반응하며 두 workflow 모두 수동 실행을 지원합니다.
+
 ChatGPT Codex 사용량 페이지의 값을 Windows 10/11 시스템 트레이와 데스크톱 위젯에 표시하는 비공식 개인용 도구입니다.
 
 > 이 프로젝트는 OpenAI가 개발, 승인, 지원 또는 배포하는 공식 앱이 아닙니다. OpenAI, ChatGPT 및 Codex는 각 권리자의 상표입니다.

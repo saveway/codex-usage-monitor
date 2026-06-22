@@ -6,6 +6,8 @@
 
 A separate **WebView2 native preview** is available without bundling Python, Playwright, or Chromium. Its manually generated GitHub Actions artifact is approximately 0.3 MiB; see [native-webview2/README-native.md](native-webview2/README-native.md) for execution, security, and limitation details. It is not yet the default replacement for v1 or an official Release, so the existing v1 Full/Lite download instructions remain authoritative below.
 
+Release tag ownership is separated: the v1 Full/Lite workflow responds only to `v1.*`, while the v2 preview workflow responds only to `v2.*-preview.*`. Both workflows retain manual dispatch support.
+
 An unofficial personal tool that displays values from the ChatGPT Codex usage page in the Windows 10/11 system tray and a desktop widget.
 
 > This project is not an official app developed, endorsed, supported, or distributed by OpenAI. OpenAI, ChatGPT, and Codex are trademarks of their respective owners.

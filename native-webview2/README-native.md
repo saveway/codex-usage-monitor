@@ -84,6 +84,8 @@ https://developer.microsoft.com/microsoft-edge/webview2/
 
 The separate `Build native WebView2 prototype` workflow supports manual `workflow_dispatch` builds and `v2.*-preview.*` tag builds. It builds this project on `windows-latest`, audits both the clean staging directory and the finished ZIP, and uploads an artifact named `CodexUsageMonitor-windows-webview2`.
 
+Tag ownership is intentionally disjoint: the established v1 Full/Lite workflow accepts only `v1.*`, and this native preview workflow accepts only `v2.*-preview.*`. Both can still be run manually without creating a Release.
+
 GitHub wraps artifacts in a download container. After downloading and opening that outer artifact ZIP, use:
 
 ```text
