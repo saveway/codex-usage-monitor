@@ -9,6 +9,10 @@ namespace CodexUsageMonitorV2
     internal sealed class AppSettings
     {
         public int autoRefreshMinutes { get; set; }
+        public bool? widgetVisible { get; set; }
+        public int? widgetSize { get; set; }
+        public int? widgetX { get; set; }
+        public int? widgetY { get; set; }
         public Dictionary<string, string> colors { get; set; }
     }
 
@@ -36,6 +40,7 @@ namespace CodexUsageMonitorV2
                 settings.autoRefreshMinutes = IsAllowedAutoRefresh(settings.autoRefreshMinutes)
                     ? settings.autoRefreshMinutes
                     : 0;
+                NormalizeWidgetSettings(settings);
                 settings.colors = ThemePalette.Normalize(settings.colors);
                 return settings;
             }
@@ -62,6 +67,7 @@ namespace CodexUsageMonitorV2
                 throw new ArgumentOutOfRangeException("settings.autoRefreshMinutes");
             }
 
+            NormalizeWidgetSettings(settings);
             settings.colors = ThemePalette.Normalize(settings.colors);
             var serializer = new JavaScriptSerializer();
             var json = serializer.Serialize(settings);
@@ -89,8 +95,24 @@ namespace CodexUsageMonitorV2
             return new AppSettings
             {
                 autoRefreshMinutes = 0,
+                widgetVisible = false,
+                widgetSize = 128,
+                widgetX = null,
+                widgetY = null,
                 colors = ThemePalette.CreateDefaultHexValues()
             };
+        }
+
+        private static void NormalizeWidgetSettings(AppSettings settings)
+        {
+            if (settings.widgetSize != 256)
+            {
+                settings.widgetSize = 128;
+            }
+            if (!settings.widgetVisible.HasValue)
+            {
+                settings.widgetVisible = false;
+            }
         }
     }
 }

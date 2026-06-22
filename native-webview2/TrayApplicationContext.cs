@@ -20,7 +20,9 @@ namespace CodexUsageMonitorV2
             new Dictionary<string, ToolStripMenuItem>(StringComparer.OrdinalIgnoreCase);
         private readonly AppSettings settings;
         private readonly ThemePalette palette;
+        private readonly ContextMenuStrip menu;
         private UsageSnapshot lastSnapshot;
+        private WidgetForm widgetForm;
         private Icon usageIcon;
         private string currentStatus = "nodata";
         private int autoRefreshMinutes;
@@ -42,12 +44,13 @@ namespace CodexUsageMonitorV2
             browserForm.UsageUpdated += HandleUsageUpdated;
             browserForm.StatusChanged += HandleStatusChanged;
 
-            var menu = new ContextMenuStrip();
+            menu = new ContextMenuStrip();
             menu.Items.Add("Open/Login usage page", null, async (sender, args) => await OpenBrowserAsync(false, false));
             menu.Items.Add("Fetch now", null, async (sender, args) => await OpenBrowserAsync(true, false));
             menu.Items.Add(CreateAutoRefreshMenu());
             menu.Items.Add(CreateColorsMenu());
             menu.Items.Add(new ToolStripSeparator());
+            menu.Items.Add("Show widget", null, (sender, args) => ShowWidget(true));
             menu.Items.Add("Reload saved data", null, (sender, args) => ReloadSavedData(true));
             menu.Items.Add("Open data file", null, (sender, args) => OpenFile(AppPaths.DataPath, "No usage data has been saved yet."));
             menu.Items.Add("Open log", null, (sender, args) => OpenFile(AppPaths.LogPath, "The log file does not exist yet."));
@@ -69,6 +72,10 @@ namespace CodexUsageMonitorV2
             autoRefreshTimer.Tick += HandleAutoRefreshTick;
             ReloadSavedData(false);
             ApplyAutoRefresh(settings.autoRefreshMinutes, false, false);
+            if (settings.widgetVisible == true)
+            {
+                ShowWidget(false);
+            }
         }
 
         protected override void ExitThreadCore()
@@ -98,6 +105,20 @@ namespace CodexUsageMonitorV2
             catch (Exception ex)
             {
                 AppLogger.Write("Browser form cleanup failed: " + ex.Message);
+            }
+
+            try
+            {
+                if (widgetForm != null)
+                {
+                    widgetForm.Close();
+                    widgetForm.Dispose();
+                    widgetForm = null;
+                }
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Write("Widget cleanup failed: " + ex.Message);
             }
 
             try
@@ -220,25 +241,23 @@ namespace CodexUsageMonitorV2
 
         private void ApplyAutoRefresh(int minutes, bool save, bool notify)
         {
+            var previousMinutes = autoRefreshMinutes;
+            autoRefreshMinutes = minutes;
             if (save)
             {
-                var previousMinutes = settings.autoRefreshMinutes;
                 try
                 {
-                    settings.autoRefreshMinutes = minutes;
-                    settings.colors = palette.ToDictionary();
-                    AppSettingsStore.Save(settings);
+                    SaveSettings();
                 }
                 catch (Exception ex)
                 {
-                    settings.autoRefreshMinutes = previousMinutes;
+                    autoRefreshMinutes = previousMinutes;
                     AppLogger.Write("Auto refresh settings could not be saved: " + ex.Message);
                     notifyIcon.ShowBalloonTip(4000, AppInfo.Name, "Auto refresh setting could not be saved. See the log.", ToolTipIcon.Error);
                     return;
                 }
             }
 
-            autoRefreshMinutes = minutes;
             foreach (var pair in autoRefreshItems)
             {
                 pair.Value.Checked = pair.Key == minutes;
@@ -332,6 +351,7 @@ namespace CodexUsageMonitorV2
 
             RefreshColorMenuSwatches();
             UpdateUsageIcon();
+            UpdateWidget();
             AppLogger.Write("Theme color changed: " + key + ".");
         }
 
@@ -356,11 +376,18 @@ namespace CodexUsageMonitorV2
 
             RefreshColorMenuSwatches();
             UpdateUsageIcon();
+            UpdateWidget();
             notifyIcon.ShowBalloonTip(3000, AppInfo.Name, "All colors were reset to their defaults.", ToolTipIcon.Info);
             AppLogger.Write("All theme colors reset to defaults.");
         }
 
         private void SaveColorSettings()
+        {
+            settings.colors = palette.ToDictionary();
+            SaveSettings();
+        }
+
+        private void SaveSettings()
         {
             settings.autoRefreshMinutes = autoRefreshMinutes;
             settings.colors = palette.ToDictionary();
@@ -407,6 +434,7 @@ namespace CodexUsageMonitorV2
             lastSnapshot = snapshot;
             currentStatus = "OK";
             UpdateTooltip();
+            UpdateWidget();
             notifyIcon.ShowBalloonTip(
                 4000,
                 "Codex usage updated",
@@ -419,6 +447,7 @@ namespace CodexUsageMonitorV2
         {
             currentStatus = CompactStatus(status);
             UpdateTooltip();
+            UpdateWidget();
             if (!status.Notify)
             {
                 return;
@@ -444,6 +473,7 @@ namespace CodexUsageMonitorV2
                 lastSnapshot = null;
                 currentStatus = "nodata";
                 UpdateTooltip();
+                UpdateWidget();
                 if (notify)
                 {
                     notifyIcon.ShowBalloonTip(4000, "Saved usage data", error, ToolTipIcon.Warning);
@@ -454,6 +484,7 @@ namespace CodexUsageMonitorV2
             lastSnapshot = snapshot;
             currentStatus = string.Equals(snapshot.status, "ok", StringComparison.OrdinalIgnoreCase) ? "saved" : "data";
             UpdateTooltip();
+            UpdateWidget();
             AppLogger.Write("Saved usage data reloaded without opening WebView2.");
             if (notify)
             {
@@ -471,6 +502,7 @@ namespace CodexUsageMonitorV2
             var cleanup = ProfileCacheCleaner.Clean();
             currentStatus = "cache";
             UpdateTooltip();
+            UpdateWidget();
             notifyIcon.ShowBalloonTip(
                 4000,
                 "WebView2 cache cleanup",
@@ -535,6 +567,69 @@ namespace CodexUsageMonitorV2
             {
                 previousIcon.Dispose();
             }
+        }
+
+        private void ShowWidget(bool notify)
+        {
+            EnsureWidgetForm();
+            widgetForm.ApplyTheme();
+            widgetForm.ApplySize(settings.widgetSize ?? 128);
+            widgetForm.ApplyLocationOrDefault(settings.widgetX, settings.widgetY);
+            widgetForm.SetSnapshot(lastSnapshot);
+            widgetForm.Show();
+            widgetForm.Activate();
+            settings.widgetVisible = true;
+            CaptureWidgetSettings();
+            SaveSettings();
+            if (notify)
+            {
+                notifyIcon.ShowBalloonTip(2500, AppInfo.Name, "Widget is shown. The tray icon remains available.", ToolTipIcon.Info);
+            }
+            AppLogger.Write("Widget shown.");
+        }
+
+        private void EnsureWidgetForm()
+        {
+            if (widgetForm != null && !widgetForm.IsDisposed)
+            {
+                return;
+            }
+
+            widgetForm = new WidgetForm(palette, menu);
+            widgetForm.WidgetClosedByUser += (sender, args) =>
+            {
+                settings.widgetVisible = false;
+                CaptureWidgetSettings();
+                SaveSettings();
+                AppLogger.Write("Widget hidden by user.");
+            };
+            widgetForm.WidgetMovedOrSized += (sender, args) =>
+            {
+                CaptureWidgetSettings();
+                SaveSettings();
+                AppLogger.Write("Widget position or size saved.");
+            };
+        }
+
+        private void UpdateWidget()
+        {
+            if (widgetForm == null || widgetForm.IsDisposed)
+            {
+                return;
+            }
+            widgetForm.ApplyTheme();
+            widgetForm.SetSnapshot(lastSnapshot);
+        }
+
+        private void CaptureWidgetSettings()
+        {
+            if (widgetForm == null || widgetForm.IsDisposed)
+            {
+                return;
+            }
+            settings.widgetSize = widgetForm.LogicalWidgetSize;
+            settings.widgetX = widgetForm.Location.X;
+            settings.widgetY = widgetForm.Location.Y;
         }
 
         private static void ShowAbout()
