@@ -13,6 +13,7 @@ namespace CodexUsageMonitorV2
         public int? widgetSize { get; set; }
         public int? widgetX { get; set; }
         public int? widgetY { get; set; }
+        public string graphStyle { get; set; }
         public Dictionary<string, string> colors { get; set; }
     }
 
@@ -99,6 +100,7 @@ namespace CodexUsageMonitorV2
                 widgetSize = 128,
                 widgetX = null,
                 widgetY = null,
+                graphStyle = WidgetGraphStyle.Rings.ToString(),
                 colors = ThemePalette.CreateDefaultHexValues()
             };
         }
@@ -113,6 +115,8 @@ namespace CodexUsageMonitorV2
             {
                 settings.widgetVisible = false;
             }
+            settings.graphStyle = WidgetGraphStyleHelper.ToSettingValue(
+                WidgetGraphStyleHelper.Normalize(settings.graphStyle));
         }
     }
 }

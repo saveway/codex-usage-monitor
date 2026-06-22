@@ -18,6 +18,8 @@ namespace CodexUsageMonitorV2
         private readonly Dictionary<int, ToolStripMenuItem> autoRefreshItems = new Dictionary<int, ToolStripMenuItem>();
         private readonly Dictionary<string, ToolStripMenuItem> colorMenuItems =
             new Dictionary<string, ToolStripMenuItem>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<WidgetGraphStyle, ToolStripMenuItem> graphStyleItems =
+            new Dictionary<WidgetGraphStyle, ToolStripMenuItem>();
         private readonly AppSettings settings;
         private readonly ThemePalette palette;
         private readonly ContextMenuStrip menu;
@@ -30,6 +32,7 @@ namespace CodexUsageMonitorV2
         private bool operationInProgress;
         private bool exiting;
         private bool disposed;
+        private WidgetGraphStyle currentGraphStyle;
 
         public TrayApplicationContext()
         {
@@ -39,6 +42,7 @@ namespace CodexUsageMonitorV2
 
             settings = AppSettingsStore.Load();
             palette = new ThemePalette(settings.colors);
+            currentGraphStyle = WidgetGraphStyleHelper.Normalize(settings.graphStyle);
             appIcon = AppIcon.Create();
             browserForm = new BrowserForm();
             browserForm.UsageUpdated += HandleUsageUpdated;
@@ -49,6 +53,7 @@ namespace CodexUsageMonitorV2
             menu.Items.Add("Fetch now", null, async (sender, args) => await OpenBrowserAsync(true, false));
             menu.Items.Add(CreateAutoRefreshMenu());
             menu.Items.Add(CreateColorsMenu());
+            menu.Items.Add(CreateGraphStyleMenu());
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add("Show widget", null, (sender, args) => ShowWidget(true));
             menu.Items.Add("Reload saved data", null, (sender, args) => ReloadSavedData(true));
@@ -72,6 +77,7 @@ namespace CodexUsageMonitorV2
             autoRefreshTimer.Tick += HandleAutoRefreshTick;
             ReloadSavedData(false);
             ApplyAutoRefresh(settings.autoRefreshMinutes, false, false);
+            ApplyGraphStyle(currentGraphStyle, false, false);
             if (settings.widgetVisible == true)
             {
                 ShowWidget(false);
@@ -315,6 +321,60 @@ namespace CodexUsageMonitorV2
             return parent;
         }
 
+        private ToolStripMenuItem CreateGraphStyleMenu()
+        {
+            var parent = new ToolStripMenuItem("Graph style");
+            AddGraphStyleItem(parent, WidgetGraphStyle.Rings);
+            AddGraphStyleItem(parent, WidgetGraphStyle.Bars);
+            AddGraphStyleItem(parent, WidgetGraphStyle.Meters);
+            AddGraphStyleItem(parent, WidgetGraphStyle.Battery);
+            return parent;
+        }
+
+        private void AddGraphStyleItem(ToolStripMenuItem parent, WidgetGraphStyle style)
+        {
+            var item = new ToolStripMenuItem(style.ToString());
+            item.Click += (sender, args) => ApplyGraphStyle(style, true, true);
+            graphStyleItems.Add(style, item);
+            parent.DropDownItems.Add(item);
+        }
+
+        private void ApplyGraphStyle(WidgetGraphStyle style, bool save, bool notify)
+        {
+            var previous = currentGraphStyle;
+            currentGraphStyle = style;
+            RefreshGraphStyleChecks();
+            if (save)
+            {
+                try
+                {
+                    SaveSettings();
+                }
+                catch (Exception ex)
+                {
+                    currentGraphStyle = previous;
+                    RefreshGraphStyleChecks();
+                    AppLogger.Write("Graph style setting could not be saved: " + ex.Message);
+                    notifyIcon.ShowBalloonTip(4000, AppInfo.Name, "Graph style could not be saved. See the log.", ToolTipIcon.Error);
+                    return;
+                }
+            }
+
+            UpdateWidget();
+            if (notify)
+            {
+                notifyIcon.ShowBalloonTip(2500, AppInfo.Name, "Widget graph style is " + style + ".", ToolTipIcon.Info);
+            }
+        }
+
+        private void RefreshGraphStyleChecks()
+        {
+            foreach (var pair in graphStyleItems)
+            {
+                pair.Value.Checked = pair.Key == currentGraphStyle;
+            }
+        }
+
         private void HandleColorMenuClick(object sender, EventArgs args)
         {
             var item = sender as ToolStripMenuItem;
@@ -391,6 +451,7 @@ namespace CodexUsageMonitorV2
         {
             settings.autoRefreshMinutes = autoRefreshMinutes;
             settings.colors = palette.ToDictionary();
+            settings.graphStyle = WidgetGraphStyleHelper.ToSettingValue(currentGraphStyle);
             AppSettingsStore.Save(settings);
         }
 
@@ -574,6 +635,7 @@ namespace CodexUsageMonitorV2
             EnsureWidgetForm();
             widgetForm.ApplyTheme();
             widgetForm.ApplySize(settings.widgetSize ?? 128);
+            widgetForm.ApplyGraphStyle(currentGraphStyle);
             widgetForm.ApplyLocationOrDefault(settings.widgetX, settings.widgetY);
             widgetForm.SetSnapshot(lastSnapshot);
             widgetForm.Show();
@@ -618,6 +680,7 @@ namespace CodexUsageMonitorV2
                 return;
             }
             widgetForm.ApplyTheme();
+            widgetForm.ApplyGraphStyle(currentGraphStyle);
             widgetForm.SetSnapshot(lastSnapshot);
         }
 
