@@ -16,7 +16,12 @@ namespace CodexUsageMonitorV2
         private readonly Icon appIcon;
         private readonly Timer autoRefreshTimer;
         private readonly Dictionary<int, ToolStripMenuItem> autoRefreshItems = new Dictionary<int, ToolStripMenuItem>();
+        private readonly Dictionary<string, ToolStripMenuItem> colorMenuItems =
+            new Dictionary<string, ToolStripMenuItem>(StringComparer.OrdinalIgnoreCase);
+        private readonly AppSettings settings;
+        private readonly ThemePalette palette;
         private UsageSnapshot lastSnapshot;
+        private Icon usageIcon;
         private string currentStatus = "nodata";
         private int autoRefreshMinutes;
         private DateTime? nextAutoRefreshAt;
@@ -30,6 +35,8 @@ namespace CodexUsageMonitorV2
             var cleanup = ProfileCacheCleaner.Clean();
             AppLogger.Write("Startup cache cleanup removed " + cleanup.RemovedBytes + " bytes.");
 
+            settings = AppSettingsStore.Load();
+            palette = new ThemePalette(settings.colors);
             appIcon = AppIcon.Create();
             browserForm = new BrowserForm();
             browserForm.UsageUpdated += HandleUsageUpdated;
@@ -39,6 +46,7 @@ namespace CodexUsageMonitorV2
             menu.Items.Add("Open/Login usage page", null, async (sender, args) => await OpenBrowserAsync(false, false));
             menu.Items.Add("Fetch now", null, async (sender, args) => await OpenBrowserAsync(true, false));
             menu.Items.Add(CreateAutoRefreshMenu());
+            menu.Items.Add(CreateColorsMenu());
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add("Reload saved data", null, (sender, args) => ReloadSavedData(true));
             menu.Items.Add("Open data file", null, (sender, args) => OpenFile(AppPaths.DataPath, "No usage data has been saved yet."));
@@ -60,7 +68,7 @@ namespace CodexUsageMonitorV2
             autoRefreshTimer = new Timer();
             autoRefreshTimer.Tick += HandleAutoRefreshTick;
             ReloadSavedData(false);
-            ApplyAutoRefresh(AutoRefreshSettings.LoadMinutes(), false, false);
+            ApplyAutoRefresh(settings.autoRefreshMinutes, false, false);
         }
 
         protected override void ExitThreadCore()
@@ -100,6 +108,19 @@ namespace CodexUsageMonitorV2
             catch (Exception ex)
             {
                 AppLogger.Write("Tray icon cleanup failed: " + ex.Message);
+            }
+
+            try
+            {
+                if (usageIcon != null)
+                {
+                    usageIcon.Dispose();
+                    usageIcon = null;
+                }
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Write("Dynamic usage icon cleanup failed: " + ex.Message);
             }
 
             try
@@ -201,12 +222,16 @@ namespace CodexUsageMonitorV2
         {
             if (save)
             {
+                var previousMinutes = settings.autoRefreshMinutes;
                 try
                 {
-                    AutoRefreshSettings.SaveMinutes(minutes);
+                    settings.autoRefreshMinutes = minutes;
+                    settings.colors = palette.ToDictionary();
+                    AppSettingsStore.Save(settings);
                 }
                 catch (Exception ex)
                 {
+                    settings.autoRefreshMinutes = previousMinutes;
                     AppLogger.Write("Auto refresh settings could not be saved: " + ex.Message);
                     notifyIcon.ShowBalloonTip(4000, AppInfo.Name, "Auto refresh setting could not be saved. See the log.", ToolTipIcon.Error);
                     return;
@@ -236,6 +261,117 @@ namespace CodexUsageMonitorV2
                     ? "Auto refresh is Off."
                     : "Auto refresh is set to " + minutes + " minutes.";
                 notifyIcon.ShowBalloonTip(3000, AppInfo.Name, message, ToolTipIcon.Info);
+            }
+        }
+
+        private ToolStripMenuItem CreateColorsMenu()
+        {
+            var parent = new ToolStripMenuItem("Colors");
+            var fiveHour = new ToolStripMenuItem("5-hour colors");
+            var weekly = new ToolStripMenuItem("Weekly colors");
+            var interfaceColors = new ToolStripMenuItem("Interface colors");
+
+            foreach (var definition in ThemePalette.Definitions)
+            {
+                var group = definition.Group == ThemeColorGroup.FiveHour
+                    ? fiveHour
+                    : definition.Group == ThemeColorGroup.Weekly ? weekly : interfaceColors;
+                var item = new ToolStripMenuItem(definition.Label)
+                {
+                    Tag = definition.Key,
+                    BackColor = palette.GetColor(definition.Key)
+                };
+                item.Click += HandleColorMenuClick;
+                colorMenuItems.Add(definition.Key, item);
+                group.DropDownItems.Add(item);
+            }
+
+            var reset = new ToolStripMenuItem("Reset all colors");
+            reset.Click += (sender, args) => ResetAllColors();
+            parent.DropDownItems.Add(fiveHour);
+            parent.DropDownItems.Add(weekly);
+            parent.DropDownItems.Add(interfaceColors);
+            parent.DropDownItems.Add(new ToolStripSeparator());
+            parent.DropDownItems.Add(reset);
+            return parent;
+        }
+
+        private void HandleColorMenuClick(object sender, EventArgs args)
+        {
+            var item = sender as ToolStripMenuItem;
+            var key = item == null ? null : item.Tag as string;
+            if (string.IsNullOrEmpty(key))
+            {
+                return;
+            }
+
+            using (var dialog = new ColorDialog
+            {
+                FullOpen = true,
+                Color = palette.GetColor(key)
+            })
+            {
+                if (dialog.ShowDialog() != DialogResult.OK)
+                {
+                    return;
+                }
+                var previous = palette.GetColor(key);
+                palette.SetColor(key, dialog.Color);
+                try
+                {
+                    SaveColorSettings();
+                }
+                catch (Exception ex)
+                {
+                    palette.SetColor(key, previous);
+                    AppLogger.Write("Theme color could not be saved: " + ex.Message);
+                    notifyIcon.ShowBalloonTip(4000, AppInfo.Name, "Color setting could not be saved. See the log.", ToolTipIcon.Error);
+                    return;
+                }
+            }
+
+            RefreshColorMenuSwatches();
+            UpdateUsageIcon();
+            AppLogger.Write("Theme color changed: " + key + ".");
+        }
+
+        private void ResetAllColors()
+        {
+            var previous = palette.ToDictionary();
+            palette.Reset();
+            try
+            {
+                SaveColorSettings();
+            }
+            catch (Exception ex)
+            {
+                foreach (var pair in previous)
+                {
+                    palette.SetColor(pair.Key, ColorTranslator.FromHtml(pair.Value));
+                }
+                AppLogger.Write("Default theme colors could not be restored: " + ex.Message);
+                notifyIcon.ShowBalloonTip(4000, AppInfo.Name, "Default colors could not be restored. See the log.", ToolTipIcon.Error);
+                return;
+            }
+
+            RefreshColorMenuSwatches();
+            UpdateUsageIcon();
+            notifyIcon.ShowBalloonTip(3000, AppInfo.Name, "All colors were reset to their defaults.", ToolTipIcon.Info);
+            AppLogger.Write("All theme colors reset to defaults.");
+        }
+
+        private void SaveColorSettings()
+        {
+            settings.autoRefreshMinutes = autoRefreshMinutes;
+            settings.colors = palette.ToDictionary();
+            AppSettingsStore.Save(settings);
+        }
+
+        private void RefreshColorMenuSwatches()
+        {
+            foreach (var pair in colorMenuItems)
+            {
+                pair.Value.BackColor = palette.GetColor(pair.Key);
             }
         }
 
@@ -344,6 +480,7 @@ namespace CodexUsageMonitorV2
 
         private void UpdateTooltip()
         {
+            UpdateUsageIcon();
             var autoText = autoRefreshMinutes <= 0
                 ? "Aoff"
                 : "A" + autoRefreshMinutes + ">N" +
@@ -367,6 +504,37 @@ namespace CodexUsageMonitorV2
             notifyIcon.Text = TruncateTooltip(
                 AppInfo.Name + "|5h" + lastSnapshot.fiveHourRemaining + "% W" + lastSnapshot.weeklyRemaining +
                 "%|U" + updatedText + "|" + currentStatus + "|" + autoText);
+        }
+
+        private void UpdateUsageIcon()
+        {
+            if (notifyIcon == null || exiting)
+            {
+                return;
+            }
+
+            if (lastSnapshot == null)
+            {
+                notifyIcon.Icon = appIcon;
+                if (usageIcon != null)
+                {
+                    usageIcon.Dispose();
+                    usageIcon = null;
+                }
+                return;
+            }
+
+            var nextIcon = UsageIconRenderer.Create(
+                lastSnapshot.fiveHourRemaining,
+                lastSnapshot.weeklyRemaining,
+                palette);
+            var previousIcon = usageIcon;
+            usageIcon = nextIcon;
+            notifyIcon.Icon = usageIcon;
+            if (previousIcon != null)
+            {
+                previousIcon.Dispose();
+            }
         }
 
         private static void ShowAbout()
