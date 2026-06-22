@@ -2,6 +2,7 @@ using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Globalization;
+using System.IO;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
 
@@ -17,6 +18,8 @@ namespace CodexUsageMonitorV2
         private WidgetGraphStyle graphStyle = WidgetGraphStyle.Rings;
         private bool dragging;
         private Point dragStart;
+        private static bool codexIconLoadAttempted;
+        private static Bitmap codexIconBitmap;
 
         public event EventHandler WidgetClosedByUser;
         public event EventHandler WidgetMovedOrSized;
@@ -140,7 +143,7 @@ namespace CodexUsageMonitorV2
             using (var titleFont = new Font("Segoe UI", 9f, FontStyle.Bold))
             using (var bodyFont = new Font("Segoe UI", 7f))
             {
-                DrawCodexMark(g, 64, 36, 10f);
+                DrawCodexMark(g, 64, 36, 22f);
                 g.DrawString("No data yet", titleFont, textBrush, 28, 58);
                 g.DrawString("Login or Fetch now", bodyFont, mutedBrush, 22, 78);
                 g.DrawString("required", bodyFont, mutedBrush, 45, 92);
@@ -184,8 +187,8 @@ namespace CodexUsageMonitorV2
                 g.DrawArc(trackPen, 41, 41, 46, 46, -90, 360);
                 g.DrawArc(weeklyPen, 41, 41, 46, 46, -90, weekly * 3.6f);
                 g.FillEllipse(centerBrush, 53, 53, 22, 22);
-                DrawCodexMark(g, 64, 64, 8f);
-                DrawUsageLines(g, textBrush, fontSmall, 91, 105);
+                DrawCodexMark(g, 64, 64, 18f);
+                DrawUsageLines(g, textBrush, fontSmall, 64, 91, 105, 4, 124);
                 g.DrawString("x", fontSmall, closeBrush, 113, 3);
             }
         }
@@ -205,9 +208,9 @@ namespace CodexUsageMonitorV2
                 DrawProgressBar(g, trackBrush, fiveHourBrush, 18, 30, 92, 16, fiveHour);
                 DrawProgressBar(g, trackBrush, weeklyBrush, 18, 92, 92, 16, weekly);
                 g.FillEllipse(centerBrush, 53, 53, 22, 22);
-                DrawCodexMark(g, 64, 64, 8f);
-                DrawUsageTextLine(g, BuildFiveHourLine(fiveHour), font, textBrush, 6, 14, 116);
-                DrawUsageTextLine(g, BuildWeeklyLine(weekly), font, textBrush, 6, 76, 116);
+                DrawCodexMark(g, 64, 64, 18f);
+                DrawUsageTextLine(g, BuildFiveHourLine(fiveHour), font, textBrush, 64, 14, 6, 122);
+                DrawUsageTextLine(g, BuildWeeklyLine(weekly), font, textBrush, 64, 76, 6, 122);
                 g.DrawString("x", font, closeBrush, 113, 3);
             }
         }
@@ -224,8 +227,8 @@ namespace CodexUsageMonitorV2
                 DrawMeter(g, new RectangleF(14, 22, 44, 34), fiveHour, palette.GetFiveHourColor(fiveHour));
                 DrawMeter(g, new RectangleF(70, 22, 44, 34), weekly, palette.GetWeeklyColor(weekly));
                 g.FillEllipse(centerBrush, 53, 53, 22, 22);
-                DrawCodexMark(g, 64, 64, 8f);
-                DrawUsageLines(g, textBrush, font, 76, 91);
+                DrawCodexMark(g, 64, 64, 18f);
+                DrawUsageLines(g, textBrush, font, 64, 76, 91, 4, 124);
                 g.DrawString("x", font, closeBrush, 113, 3);
             }
         }
@@ -246,23 +249,34 @@ namespace CodexUsageMonitorV2
                 DrawBattery(g, outlinePen, trackBrush, fiveHourBrush, 18, 34, 88, 18, fiveHour);
                 DrawBattery(g, outlinePen, trackBrush, weeklyBrush, 18, 92, 88, 18, weekly);
                 g.FillEllipse(centerBrush, 53, 53, 22, 22);
-                DrawCodexMark(g, 64, 64, 8f);
-                DrawUsageTextLine(g, BuildFiveHourLine(fiveHour), font, textBrush, 6, 18, 116);
-                DrawUsageTextLine(g, BuildWeeklyLine(weekly), font, textBrush, 6, 76, 116);
+                DrawCodexMark(g, 64, 64, 18f);
+                DrawUsageTextLine(g, BuildFiveHourLine(fiveHour), font, textBrush, 62, 18, 6, 118);
+                DrawUsageTextLine(g, BuildWeeklyLine(weekly), font, textBrush, 62, 76, 6, 118);
                 g.DrawString("x", font, closeBrush, 113, 3);
             }
         }
 
-        private void DrawUsageLines(Graphics g, Brush brush, Font baseFont, float firstY, float secondY)
+        private void DrawUsageLines(Graphics g, Brush brush, Font baseFont, float centerX, float firstY, float secondY, float minX, float maxX)
         {
-            DrawUsageTextLine(g, BuildFiveHourLine(Clamp(snapshot.fiveHourRemaining)), baseFont, brush, 4, firstY, 120);
-            DrawUsageTextLine(g, BuildWeeklyLine(Clamp(snapshot.weeklyRemaining)), baseFont, brush, 4, secondY, 120);
+            DrawUsageTextLine(g, BuildFiveHourLine(Clamp(snapshot.fiveHourRemaining)), baseFont, brush, centerX, firstY, minX, maxX);
+            DrawUsageTextLine(g, BuildWeeklyLine(Clamp(snapshot.weeklyRemaining)), baseFont, brush, centerX, secondY, minX, maxX);
         }
 
-        private void DrawUsageTextLine(Graphics g, string text, Font baseFont, Brush brush, float x, float y, float maxWidth)
+        private void DrawUsageTextLine(Graphics g, string text, Font baseFont, Brush brush, float centerX, float y, float minX, float maxX)
         {
+            var maxWidth = Math.Max(1f, maxX - minX);
             using (var font = CreateFittingFont(g, text, baseFont, maxWidth))
             {
+                var size = g.MeasureString(text, font);
+                var x = centerX - size.Width / 2f;
+                if (x < minX)
+                {
+                    x = minX;
+                }
+                if (x + size.Width > maxX)
+                {
+                    x = maxX - size.Width;
+                }
                 g.DrawString(text, font, brush, x, y);
             }
         }
@@ -413,14 +427,99 @@ namespace CodexUsageMonitorV2
             g.DrawRectangle(outlinePen, nub);
         }
 
-        private void DrawCodexMark(Graphics g, float centerX, float centerY, float fontSize)
+        private void DrawCodexMark(Graphics g, float centerX, float centerY, float iconSize)
         {
-            using (var font = new Font("Consolas", fontSize, FontStyle.Bold))
+            var iconBitmap = GetCodexIconBitmap();
+            if (iconBitmap != null)
+            {
+                var rect = new RectangleF(
+                    centerX - iconSize / 2f,
+                    centerY - iconSize / 2f,
+                    iconSize,
+                    iconSize);
+                g.DrawImage(iconBitmap, rect);
+                return;
+            }
+
+            using (var font = new Font("Consolas", iconSize * 0.44f, FontStyle.Bold))
             using (var brush = new SolidBrush(palette.GetColor("CodexMark")))
             {
                 const string text = "C>";
                 var size = g.MeasureString(text, font);
                 g.DrawString(text, font, brush, centerX - size.Width / 2f, centerY - size.Height / 2f);
+            }
+        }
+
+        private static Bitmap GetCodexIconBitmap()
+        {
+            if (codexIconLoadAttempted)
+            {
+                return codexIconBitmap;
+            }
+            codexIconLoadAttempted = true;
+
+            var path = FindCodexExePath();
+            if (string.IsNullOrEmpty(path))
+            {
+                return null;
+            }
+
+            try
+            {
+                var extracted = Icon.ExtractAssociatedIcon(path);
+                if (extracted != null)
+                {
+                    codexIconBitmap = extracted.ToBitmap();
+                    extracted.Dispose();
+                }
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Write("Codex widget icon could not be loaded from " + path + ": " + ex.Message);
+            }
+            return codexIconBitmap;
+        }
+
+        private static string FindCodexExePath()
+        {
+            const string exactPath = @"C:\Program Files\WindowsApps\OpenAI.Codex_26.616.4196.0_x64__2p2nqsd0c76g0\app\Codex.exe";
+            if (File.Exists(exactPath))
+            {
+                return exactPath;
+            }
+
+            try
+            {
+                var root = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                    "WindowsApps");
+                if (!Directory.Exists(root))
+                {
+                    return null;
+                }
+
+                var bestPath = null as string;
+                var bestName = null as string;
+                foreach (var directory in Directory.GetDirectories(root, "OpenAI.Codex_*_x64__2p2nqsd0c76g0"))
+                {
+                    var candidate = Path.Combine(directory, "app", "Codex.exe");
+                    if (!File.Exists(candidate))
+                    {
+                        continue;
+                    }
+                    var name = Path.GetFileName(directory);
+                    if (bestName == null || string.Compare(name, bestName, StringComparison.OrdinalIgnoreCase) > 0)
+                    {
+                        bestName = name;
+                        bestPath = candidate;
+                    }
+                }
+                return bestPath;
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Write("Codex widget icon search failed: " + ex.Message);
+                return null;
             }
         }
 
