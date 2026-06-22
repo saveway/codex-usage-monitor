@@ -177,10 +177,20 @@ jobs:
           body: |
             ## WebView2 Native Preview
 
+            ### What's new in preview.2
+
+            - Auto refresh option added.
+            - Auto refresh is Default OFF.
+            - Only 10/15/30/60 minute intervals are available.
+            - The next refresh time is shown in the tray tooltip.
+            - A manual `Fetch now` collision guard prevents overlapping collection.
+            - Login and session data remain local in `%LOCALAPPDATA%\CodexUsageMonitorV2`.
+            - This is still a preview; no installer or widget UI is included yet.
+
+            ### Runtime and privacy
+
             - Python, Playwright, and Chromium are not bundled.
             - Microsoft Edge WebView2 Runtime is required.
-            - This preview uses manual `Fetch now` collection.
-            - Automatic periodic collection, widget UI, and an installer are not included yet.
             - This preview does not replace the established v1 Full/Lite releases.
             - Usage data, logs, and the browser login session are stored locally in `%LOCALAPPDATA%\CodexUsageMonitorV2`.
 
