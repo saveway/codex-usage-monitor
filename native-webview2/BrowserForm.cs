@@ -60,9 +60,9 @@ namespace CodexUsageMonitorV2
                 AppStatusKind.Information,
                 fetchNow ? "Opening the usage page and reading usage..." : "Opening the ChatGPT sign-in or usage page...",
                 false);
-            if (automatic)
+            if (fetchNow || automatic)
             {
-                EnsureHiddenControlHandles();
+                PrepareHiddenFetch();
             }
             else
             {
@@ -103,9 +103,20 @@ namespace CodexUsageMonitorV2
 
         private void ShowForUser()
         {
+            ShowInTaskbar = true;
             Show();
             WindowState = FormWindowState.Normal;
             Activate();
+        }
+
+        private void PrepareHiddenFetch()
+        {
+            if (Visible)
+            {
+                Hide();
+            }
+            ShowInTaskbar = false;
+            EnsureHiddenControlHandles();
         }
 
         private void EnsureHiddenControlHandles()
@@ -210,11 +221,7 @@ namespace CodexUsageMonitorV2
                 if (LooksLikeLoginRequired(webView.Source, pageText))
                 {
                     SafeDebugSnapshot.Save("login_required", webView.Source, pageText);
-                    if (automaticFetch)
-                    {
-                        ShowForUser();
-                    }
-                    SetStatus(AppStatusKind.Warning, "Login required. Use the visible ChatGPT page, then choose Fetch now.", fetchAfterNavigation);
+                    SetStatus(AppStatusKind.Warning, "Login required. Use Open/Login usage page to sign in, then choose Fetch now.", fetchAfterNavigation);
                     fetchAfterNavigation = false;
                     fetchInProgress = false;
                     CompleteFetch(FetchResult.LoginRequired);

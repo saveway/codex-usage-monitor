@@ -77,7 +77,7 @@ The committed `app.ico` contains six Windows icon sizes and is reproducible with
 
 ## Run
 
-Run `bin\Release\net48\deploy\CodexUsageMonitorV2.exe`. Right-click the tray icon and choose `Open/Login usage page`. Sign in directly on the visible ChatGPT/OpenAI page if requested. Choose `Fetch now` to open that visible page, wait for it to render, read the two percentages, save JSON, and refresh the tray tooltip.
+Run `bin\Release\net48\deploy\CodexUsageMonitorV2.exe`. Right-click the tray icon and choose `Open/Login usage page`. Sign in directly on the visible ChatGPT/OpenAI page if requested. Choose `Fetch now` to read the usage page with the local WebView2 session in the background, save JSON, and refresh the tray tooltip.
 
 The remaining menu commands behave as follows:
 
@@ -182,8 +182,8 @@ Trade-offs:
 
 - Requires .NET Framework 4.8 and Microsoft Edge WebView2 Runtime.
 - DOM text parsing can break when ChatGPT wording or layout changes.
-- This prototype now includes color settings and four widget graph styles, but it has not yet reproduced v1's zero-alert acknowledgement, credits, or reset-time parsing.
-- `Fetch now` currently keeps the browser visible by design.
+- This preview includes color settings, four widget graph styles, reset/credits parsing, and zero-alert acknowledgement.
+- `Fetch now` uses a hidden WebView2 fetch path. If login is required, it reports that state; it does not automatically show the login page. Use `Open/Login usage page` when a visible sign-in page is needed.
 
 ### Distribution choices
 
