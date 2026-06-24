@@ -313,7 +313,7 @@ namespace CodexUsageMonitorV2
         {
             SolidBrush alertBrush = null;
             var brush = normalBrush;
-            if (percent >= 100)
+            if (percent <= 0)
             {
                 alertBrush = new SolidBrush(palette.GetColor(weekly ? "WeekCritical" : "FiveCritical"));
                 brush = alertBrush;

@@ -729,7 +729,7 @@ namespace CodexUsageMonitorV2
 
         private static bool IsGeneralLimitReached(int value, int? percent)
         {
-            return value >= 100 || (percent.HasValue && percent.Value >= 100);
+            return value <= 0 || (percent.HasValue && percent.Value <= 0);
         }
 
         private static string BuildAlertKey(string prefix, string resetText)
