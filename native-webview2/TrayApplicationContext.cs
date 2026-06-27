@@ -26,6 +26,7 @@ namespace CodexUsageMonitorV2
         private readonly ThemePalette palette;
         private readonly ContextMenuStrip menu;
         private readonly ToolStripMenuItem acknowledgeAlertMenuItem;
+        private readonly ToolStripMenuItem notificationsMenuItem;
         private UsageSnapshot lastSnapshot;
         private WidgetForm widgetForm;
         private Icon usageIcon;
@@ -37,6 +38,7 @@ namespace CodexUsageMonitorV2
         private bool disposed;
         private WidgetGraphStyle currentGraphStyle;
         private WidgetLogoMode currentLogoMode;
+        private bool notificationsEnabled;
         private string currentFiveHourAlertKey;
         private string currentWeeklyAlertKey;
         private string lastNotifiedFiveHourAlertKey;
@@ -52,6 +54,7 @@ namespace CodexUsageMonitorV2
             palette = new ThemePalette(settings.colors);
             currentGraphStyle = WidgetGraphStyleHelper.Normalize(settings.graphStyle);
             currentLogoMode = WidgetLogoModeHelper.Normalize(settings.logoMode);
+            notificationsEnabled = settings.notificationsEnabled == true;
             appIcon = AppIcon.Create();
             browserForm = new BrowserForm();
             browserForm.UsageUpdated += HandleUsageUpdated;
@@ -64,6 +67,9 @@ namespace CodexUsageMonitorV2
             menu.Items.Add(CreateColorsMenu());
             menu.Items.Add(CreateGraphStyleMenu());
             menu.Items.Add(CreateLogoModeMenu());
+            notificationsMenuItem = new ToolStripMenuItem("Balloon notifications");
+            notificationsMenuItem.Click += (sender, args) => ApplyNotificationsEnabled(!notificationsEnabled, true, true);
+            menu.Items.Add(notificationsMenuItem);
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add("Show widget", null, (sender, args) => ShowWidget(true));
             acknowledgeAlertMenuItem = new ToolStripMenuItem("Acknowledge current alert");
@@ -93,6 +99,7 @@ namespace CodexUsageMonitorV2
             ApplyAutoRefresh(settings.autoRefreshMinutes, false, false);
             ApplyGraphStyle(currentGraphStyle, false, false);
             ApplyLogoMode(currentLogoMode, false, false);
+            ApplyNotificationsEnabled(notificationsEnabled, false, false);
             if (settings.widgetVisible == true)
             {
                 ShowWidget(false);
@@ -215,7 +222,7 @@ namespace CodexUsageMonitorV2
                 }
                 else
                 {
-                    notifyIcon.ShowBalloonTip(3000, AppInfo.Name, "Another usage operation is already in progress.", ToolTipIcon.Warning);
+                    ShowNotification(3000, AppInfo.Name, "Another usage operation is already in progress.", ToolTipIcon.Warning);
                 }
                 return FetchResult.Busy;
             }
@@ -274,7 +281,7 @@ namespace CodexUsageMonitorV2
                 {
                     autoRefreshMinutes = previousMinutes;
                     AppLogger.Write("Auto refresh settings could not be saved: " + ex.Message);
-                    notifyIcon.ShowBalloonTip(4000, AppInfo.Name, "Auto refresh setting could not be saved. See the log.", ToolTipIcon.Error);
+                    ShowNotification(4000, AppInfo.Name, "Auto refresh setting could not be saved. See the log.", ToolTipIcon.Error);
                     return;
                 }
             }
@@ -300,7 +307,7 @@ namespace CodexUsageMonitorV2
                 var message = minutes == 0
                     ? "Auto refresh is Off."
                     : "Auto refresh is set to " + minutes + " minutes.";
-                notifyIcon.ShowBalloonTip(3000, AppInfo.Name, message, ToolTipIcon.Info);
+                ShowNotification(3000, AppInfo.Name, message, ToolTipIcon.Info);
             }
         }
 
@@ -386,7 +393,7 @@ namespace CodexUsageMonitorV2
                     currentGraphStyle = previous;
                     RefreshGraphStyleChecks();
                     AppLogger.Write("Graph style setting could not be saved: " + ex.Message);
-                    notifyIcon.ShowBalloonTip(4000, AppInfo.Name, "Graph style could not be saved. See the log.", ToolTipIcon.Error);
+                    ShowNotification(4000, AppInfo.Name, "Graph style could not be saved. See the log.", ToolTipIcon.Error);
                     return;
                 }
             }
@@ -394,7 +401,7 @@ namespace CodexUsageMonitorV2
             UpdateWidget();
             if (notify)
             {
-                notifyIcon.ShowBalloonTip(2500, AppInfo.Name, "Widget graph style is " + style + ".", ToolTipIcon.Info);
+                ShowNotification(2500, AppInfo.Name, "Widget graph style is " + style + ".", ToolTipIcon.Info);
             }
         }
 
@@ -422,7 +429,7 @@ namespace CodexUsageMonitorV2
                     currentLogoMode = previous;
                     RefreshLogoModeChecks();
                     AppLogger.Write("Widget logo mode setting could not be saved: " + ex.Message);
-                    notifyIcon.ShowBalloonTip(4000, AppInfo.Name, "Logo mode could not be saved. See the log.", ToolTipIcon.Error);
+                    ShowNotification(4000, AppInfo.Name, "Logo mode could not be saved. See the log.", ToolTipIcon.Error);
                     return;
                 }
             }
@@ -433,7 +440,7 @@ namespace CodexUsageMonitorV2
                 var message = mode == WidgetLogoMode.Animated
                     ? "Widget center logo uses the animated GIF on 256x256 widgets."
                     : "Widget center logo uses the static icon.";
-                notifyIcon.ShowBalloonTip(2500, AppInfo.Name, message, ToolTipIcon.Info);
+                ShowNotification(2500, AppInfo.Name, message, ToolTipIcon.Info);
             }
         }
 
@@ -443,6 +450,53 @@ namespace CodexUsageMonitorV2
             {
                 pair.Value.Checked = pair.Key == currentLogoMode;
             }
+        }
+
+        private void ApplyNotificationsEnabled(bool enabled, bool save, bool notify)
+        {
+            var previous = notificationsEnabled;
+            notificationsEnabled = enabled;
+            RefreshNotificationsMenu();
+            if (save)
+            {
+                try
+                {
+                    SaveSettings();
+                }
+                catch (Exception ex)
+                {
+                    notificationsEnabled = previous;
+                    RefreshNotificationsMenu();
+                    AppLogger.Write("Notification setting could not be saved: " + ex.Message);
+                    return;
+                }
+            }
+
+            if (notify)
+            {
+                ShowNotification(
+                    2500,
+                    AppInfo.Name,
+                    enabled ? "Balloon notifications are On." : "Balloon notifications are Off.",
+                    ToolTipIcon.Info);
+            }
+        }
+
+        private void RefreshNotificationsMenu()
+        {
+            if (notificationsMenuItem != null)
+            {
+                notificationsMenuItem.Checked = notificationsEnabled;
+            }
+        }
+
+        private void ShowNotification(int timeout, string title, string message, ToolTipIcon icon)
+        {
+            if (!notificationsEnabled || notifyIcon == null || exiting)
+            {
+                return;
+            }
+            notifyIcon.ShowBalloonTip(timeout, title, message, icon);
         }
 
         private void HandleColorMenuClick(object sender, EventArgs args)
@@ -474,7 +528,7 @@ namespace CodexUsageMonitorV2
                 {
                     palette.SetColor(key, previous);
                     AppLogger.Write("Theme color could not be saved: " + ex.Message);
-                    notifyIcon.ShowBalloonTip(4000, AppInfo.Name, "Color setting could not be saved. See the log.", ToolTipIcon.Error);
+                    ShowNotification(4000, AppInfo.Name, "Color setting could not be saved. See the log.", ToolTipIcon.Error);
                     return;
                 }
             }
@@ -500,14 +554,14 @@ namespace CodexUsageMonitorV2
                     palette.SetColor(pair.Key, ColorTranslator.FromHtml(pair.Value));
                 }
                 AppLogger.Write("Default theme colors could not be restored: " + ex.Message);
-                notifyIcon.ShowBalloonTip(4000, AppInfo.Name, "Default colors could not be restored. See the log.", ToolTipIcon.Error);
+                ShowNotification(4000, AppInfo.Name, "Default colors could not be restored. See the log.", ToolTipIcon.Error);
                 return;
             }
 
             RefreshColorMenuSwatches();
             UpdateUsageIcon();
             UpdateWidget();
-            notifyIcon.ShowBalloonTip(3000, AppInfo.Name, "All colors were reset to their defaults.", ToolTipIcon.Info);
+            ShowNotification(3000, AppInfo.Name, "All colors were reset to their defaults.", ToolTipIcon.Info);
             AppLogger.Write("All theme colors reset to defaults.");
         }
 
@@ -523,6 +577,7 @@ namespace CodexUsageMonitorV2
             settings.colors = palette.ToDictionary();
             settings.graphStyle = WidgetGraphStyleHelper.ToSettingValue(currentGraphStyle);
             settings.logoMode = WidgetLogoModeHelper.ToSettingValue(currentLogoMode);
+            settings.notificationsEnabled = notificationsEnabled;
             AppSettingsStore.Save(settings);
         }
 
@@ -570,7 +625,7 @@ namespace CodexUsageMonitorV2
             UpdateWidget();
             if (!zeroAlertShown)
             {
-                notifyIcon.ShowBalloonTip(
+                ShowNotification(
                     4000,
                     "Codex usage updated",
                     "5-hour " + snapshot.fiveHourRemaining +
@@ -592,7 +647,7 @@ namespace CodexUsageMonitorV2
             var icon = status.Kind == AppStatusKind.Error
                 ? ToolTipIcon.Error
                 : status.Kind == AppStatusKind.Warning ? ToolTipIcon.Warning : ToolTipIcon.Info;
-            notifyIcon.ShowBalloonTip(5000, "Codex Usage Monitor V2", status.Message, icon);
+            ShowNotification(5000, "Codex Usage Monitor V2", status.Message, icon);
         }
 
         private static string TruncateTooltip(string value)
@@ -613,7 +668,7 @@ namespace CodexUsageMonitorV2
                 UpdateWidget();
                 if (notify)
                 {
-                    notifyIcon.ShowBalloonTip(4000, "Saved usage data", error, ToolTipIcon.Warning);
+                    ShowNotification(4000, "Saved usage data", error, ToolTipIcon.Warning);
                 }
                 return;
             }
@@ -626,7 +681,7 @@ namespace CodexUsageMonitorV2
             AppLogger.Write("Saved usage data reloaded without opening WebView2.");
             if (notify)
             {
-                notifyIcon.ShowBalloonTip(3000, "Saved usage data", "The tray display was reloaded from the local JSON file.", ToolTipIcon.Info);
+                ShowNotification(3000, "Saved usage data", "The tray display was reloaded from the local JSON file.", ToolTipIcon.Info);
             }
         }
 
@@ -634,14 +689,14 @@ namespace CodexUsageMonitorV2
         {
             if (operationInProgress || browserForm.IsBusy)
             {
-                notifyIcon.ShowBalloonTip(4000, AppInfo.Name, "Cache cleanup is unavailable while usage is loading.", ToolTipIcon.Warning);
+                ShowNotification(4000, AppInfo.Name, "Cache cleanup is unavailable while usage is loading.", ToolTipIcon.Warning);
                 return;
             }
             var cleanup = ProfileCacheCleaner.Clean();
             currentStatus = "cache";
             UpdateTooltip();
             UpdateWidget();
-            notifyIcon.ShowBalloonTip(
+            ShowNotification(
                 4000,
                 "WebView2 cache cleanup",
                 "Removed " + cleanup.RemovedFiles + " cache files (" + FormatBytes(cleanup.RemovedBytes) + "). Login data was preserved.",
@@ -692,7 +747,7 @@ namespace CodexUsageMonitorV2
                 return false;
             }
 
-            notifyIcon.ShowBalloonTip(
+            ShowNotification(
                 8000,
                 "Codex usage limit reached",
                 string.Join(Environment.NewLine, lines.ToArray()),
@@ -705,7 +760,7 @@ namespace CodexUsageMonitorV2
         {
             if (!HasPendingAcknowledgeAlert())
             {
-                notifyIcon.ShowBalloonTip(2500, AppInfo.Name, "There is no current usage alert to acknowledge.", ToolTipIcon.Info);
+                ShowNotification(2500, AppInfo.Name, "There is no current usage alert to acknowledge.", ToolTipIcon.Info);
                 return;
             }
 
@@ -725,7 +780,7 @@ namespace CodexUsageMonitorV2
             {
                 SaveSettings();
                 UpdateAcknowledgeAlertMenu();
-                notifyIcon.ShowBalloonTip(
+                ShowNotification(
                     3000,
                     AppInfo.Name,
                     "Acknowledged current alert: " + string.Join(", ", labels.ToArray()) + ".",
@@ -735,7 +790,7 @@ namespace CodexUsageMonitorV2
             catch (Exception ex)
             {
                 AppLogger.Write("Zero alert acknowledgement could not be saved: " + ex.Message);
-                notifyIcon.ShowBalloonTip(4000, AppInfo.Name, "Alert acknowledgement could not be saved. See the log.", ToolTipIcon.Error);
+                ShowNotification(4000, AppInfo.Name, "Alert acknowledgement could not be saved. See the log.", ToolTipIcon.Error);
             }
         }
 
@@ -983,7 +1038,7 @@ namespace CodexUsageMonitorV2
             SaveSettings();
             if (notify)
             {
-                notifyIcon.ShowBalloonTip(2500, AppInfo.Name, "Widget is shown. The tray icon remains available.", ToolTipIcon.Info);
+                ShowNotification(2500, AppInfo.Name, "Widget is shown. The tray icon remains available.", ToolTipIcon.Info);
             }
             AppLogger.Write("Widget shown.");
         }
@@ -1104,3 +1159,4 @@ namespace CodexUsageMonitorV2
         }
     }
 }
+

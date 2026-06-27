@@ -15,6 +15,7 @@ namespace CodexUsageMonitorV2
         public int? widgetY { get; set; }
         public string graphStyle { get; set; }
         public string logoMode { get; set; }
+        public bool? notificationsEnabled { get; set; }
         public Dictionary<string, string> colors { get; set; }
         public string acknowledgedFiveHourAlertKey { get; set; }
         public string acknowledgedWeeklyAlertKey { get; set; }
@@ -105,6 +106,7 @@ namespace CodexUsageMonitorV2
                 widgetY = null,
                 graphStyle = WidgetGraphStyle.Rings.ToString(),
                 logoMode = WidgetLogoMode.Static.ToString(),
+                notificationsEnabled = false,
                 colors = ThemePalette.CreateDefaultHexValues()
             };
         }
@@ -123,6 +125,10 @@ namespace CodexUsageMonitorV2
                 WidgetGraphStyleHelper.Normalize(settings.graphStyle));
             settings.logoMode = WidgetLogoModeHelper.ToSettingValue(
                 WidgetLogoModeHelper.Normalize(settings.logoMode));
+            if (!settings.notificationsEnabled.HasValue)
+            {
+                settings.notificationsEnabled = false;
+            }
         }
     }
 }

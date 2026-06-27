@@ -12,6 +12,8 @@ namespace CodexUsageMonitorV2
     internal sealed class WidgetForm : Form
     {
         private const int LogicalSize = 128;
+        private const double GraphFillMilliseconds = 1400d;
+        private const double GraphHoldMilliseconds = 2200d;
         private readonly ThemePalette palette;
         private readonly Panel panel;
         private UsageSnapshot snapshot;
@@ -19,6 +21,7 @@ namespace CodexUsageMonitorV2
         private WidgetGraphStyle graphStyle = WidgetGraphStyle.Rings;
         private WidgetLogoMode logoMode = WidgetLogoMode.Static;
         private readonly Timer animationTimer;
+        private DateTime graphAnimationStartedAt = DateTime.UtcNow;
         private bool dragging;
         private Point dragStart;
         private static bool codexIconLoadAttempted;
@@ -49,7 +52,7 @@ namespace CodexUsageMonitorV2
             TransparencyKey = BackColor;
             ClientSize = new Size(LogicalSize, LogicalSize);
 
-            panel = new Panel
+            panel = new BufferedWidgetPanel
             {
                 Dock = DockStyle.Fill,
                 BackColor = BackColor,
@@ -63,17 +66,20 @@ namespace CodexUsageMonitorV2
             panel.MouseDoubleClick += HandleMouseDoubleClick;
             Controls.Add(panel);
 
-            animationTimer = new Timer { Interval = 80 };
+            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer, true);
+            UpdateStyles();
+
+            animationTimer = new Timer { Interval = 33 };
             animationTimer.Tick += (sender, args) =>
             {
-                if (ShouldDrawAnimatedLogo())
+                if (ShouldRunWidgetAnimation())
                 {
                     var image = GetAnimatedLogoImage();
                     if (image != null)
                     {
                         ImageAnimator.UpdateFrames(image);
-                        panel.Invalidate();
                     }
+                    panel.Invalidate();
                 }
             };
         }
@@ -81,6 +87,7 @@ namespace CodexUsageMonitorV2
         public void SetSnapshot(UsageSnapshot value)
         {
             snapshot = value;
+            ResetGraphAnimationCycle();
             panel.Invalidate();
         }
 
@@ -96,6 +103,7 @@ namespace CodexUsageMonitorV2
         {
             logicalWidgetSize = size == 256 ? 256 : 128;
             ClientSize = new Size(logicalWidgetSize, logicalWidgetSize);
+            ResetGraphAnimationCycle();
             UpdateAnimationTimer();
             panel.Invalidate();
         }
@@ -109,6 +117,7 @@ namespace CodexUsageMonitorV2
         public void ApplyLogoMode(WidgetLogoMode mode)
         {
             logoMode = mode;
+            ResetGraphAnimationCycle();
             UpdateAnimationTimer();
             panel.Invalidate();
         }
@@ -220,6 +229,8 @@ namespace CodexUsageMonitorV2
         {
             var fiveHour = Clamp(snapshot.fiveHourRemaining);
             var weekly = Clamp(snapshot.weeklyRemaining);
+            var fiveHourGraph = GetAnimatedGraphPercent(fiveHour);
+            var weeklyGraph = GetAnimatedGraphPercent(weekly);
             using (var trackPen = CreateRoundPen(palette.GetColor("Track"), 7f))
             using (var fiveHourPen = CreateRoundPen(palette.GetFiveHourColor(fiveHour), 7f))
             using (var weeklyPen = CreateRoundPen(palette.GetWeeklyColor(weekly), 7f))
@@ -232,9 +243,9 @@ namespace CodexUsageMonitorV2
                 var innerRing = new RectangleF(44, 24, 40, 40);
                 var ringCenter = CenterOf(outerRing);
                 g.DrawArc(trackPen, outerRing, -90, 360);
-                g.DrawArc(fiveHourPen, outerRing, -90, fiveHour * 3.6f);
+                g.DrawArc(fiveHourPen, outerRing, -90, fiveHourGraph * 3.6f);
                 g.DrawArc(trackPen, innerRing, -90, 360);
-                g.DrawArc(weeklyPen, innerRing, -90, weekly * 3.6f);
+                g.DrawArc(weeklyPen, innerRing, -90, weeklyGraph * 3.6f);
                 g.FillEllipse(centerBrush, ringCenter.X - 11, ringCenter.Y - 11, 22, 22);
                 DrawCodexMark(g, ringCenter.X, ringCenter.Y, GetLogicalIconSize(WidgetGraphStyle.Rings));
                 DrawUsageLines(g, textBrush, fontSmall, ringCenter.X, 91, 105, 4, 124);
@@ -246,6 +257,8 @@ namespace CodexUsageMonitorV2
         {
             var fiveHour = Clamp(snapshot.fiveHourRemaining);
             var weekly = Clamp(snapshot.weeklyRemaining);
+            var fiveHourGraph = GetAnimatedGraphPercent(fiveHour);
+            var weeklyGraph = GetAnimatedGraphPercent(weekly);
             using (var textBrush = new SolidBrush(palette.GetColor("Text")))
             using (var closeBrush = new SolidBrush(palette.GetColor("Close")))
             using (var trackBrush = new SolidBrush(palette.GetColor("Track")))
@@ -258,8 +271,8 @@ namespace CodexUsageMonitorV2
                 var weeklyBar = new Rectangle(18, 92, 92, 16);
                 var weeklyTextTop = 76f;
                 var widgetCenterX = LogicalCenterX();
-                DrawProgressBar(g, trackBrush, fiveHourBrush, fiveHourBar, fiveHour);
-                DrawProgressBar(g, trackBrush, weeklyBrush, weeklyBar, weekly);
+                DrawProgressBar(g, trackBrush, fiveHourBrush, fiveHourBar, fiveHourGraph);
+                DrawProgressBar(g, trackBrush, weeklyBrush, weeklyBar, weeklyGraph);
                 var iconAnchor = new PointF(widgetCenterX, (fiveHourBar.Bottom + weeklyTextTop) / 2f);
                 g.FillEllipse(centerBrush, iconAnchor.X - 11, iconAnchor.Y - 11, 22, 22);
                 DrawCodexMark(g, iconAnchor.X, iconAnchor.Y, GetLogicalIconSize(WidgetGraphStyle.Bars));
@@ -273,6 +286,8 @@ namespace CodexUsageMonitorV2
         {
             var fiveHour = Clamp(snapshot.fiveHourRemaining);
             var weekly = Clamp(snapshot.weeklyRemaining);
+            var fiveHourGraph = GetAnimatedGraphPercent(fiveHour);
+            var weeklyGraph = GetAnimatedGraphPercent(weekly);
             using (var textBrush = new SolidBrush(palette.GetColor("Text")))
             using (var closeBrush = new SolidBrush(palette.GetColor("Close")))
             using (var font = new Font("Segoe UI", 7.5f, FontStyle.Bold))
@@ -284,10 +299,10 @@ namespace CodexUsageMonitorV2
                 var groupCenterX = CenterX(meterGroup);
                 var fiveHourTextTop = 86f;
                 var weeklyTextTop = 101f;
-                var visibleMeterBounds = CalculateVisibleMeterBounds(fiveHourMeter, weeklyMeter, fiveHour, weekly);
+                var visibleMeterBounds = CalculateVisibleMeterBounds(fiveHourMeter, weeklyMeter, fiveHourGraph, weeklyGraph);
                 var iconAnchor = new PointF(groupCenterX, (visibleMeterBounds.Bottom + fiveHourTextTop) / 2f);
-                DrawMeter(g, fiveHourMeter, fiveHour, palette.GetFiveHourColor(fiveHour));
-                DrawMeter(g, weeklyMeter, weekly, palette.GetWeeklyColor(weekly));
+                DrawMeter(g, fiveHourMeter, fiveHourGraph, palette.GetFiveHourColor(fiveHour));
+                DrawMeter(g, weeklyMeter, weeklyGraph, palette.GetWeeklyColor(weekly));
                 g.FillEllipse(centerBrush, iconAnchor.X - 11, iconAnchor.Y - 11, 22, 22);
                 DrawCodexMark(g, iconAnchor.X, iconAnchor.Y, GetLogicalIconSize(WidgetGraphStyle.Meters));
                 DrawUsageLines(g, textBrush, font, groupCenterX, fiveHourTextTop, weeklyTextTop, 4, 124);
@@ -299,6 +314,8 @@ namespace CodexUsageMonitorV2
         {
             var fiveHour = Clamp(snapshot.fiveHourRemaining);
             var weekly = Clamp(snapshot.weeklyRemaining);
+            var fiveHourGraph = GetAnimatedGraphPercent(fiveHour);
+            var weeklyGraph = GetAnimatedGraphPercent(weekly);
             using (var textBrush = new SolidBrush(palette.GetColor("Text")))
             using (var closeBrush = new SolidBrush(palette.GetColor("Close")))
             using (var outlinePen = new Pen(palette.GetColor("BatteryOutline"), 2f))
@@ -314,8 +331,8 @@ namespace CodexUsageMonitorV2
                 var weeklyTextTop = 76f;
                 var bodyCenterX = CenterX(fiveHourBody);
                 var iconAnchor = new PointF(bodyCenterX, (fiveHourBody.Bottom + weeklyTextTop) / 2f);
-                DrawBattery(g, outlinePen, trackBrush, fiveHourBrush, fiveHourBody, fiveHour);
-                DrawBattery(g, outlinePen, trackBrush, weeklyBrush, weeklyBody, weekly);
+                DrawBattery(g, outlinePen, trackBrush, fiveHourBrush, fiveHourBody, fiveHourGraph);
+                DrawBattery(g, outlinePen, trackBrush, weeklyBrush, weeklyBody, weeklyGraph);
                 g.FillEllipse(centerBrush, iconAnchor.X - 11, iconAnchor.Y - 11, 22, 22);
                 DrawCodexMark(g, iconAnchor.X, iconAnchor.Y, GetLogicalIconSize(WidgetGraphStyle.Battery));
                 DrawFiveHourUsageTextLine(g, font, textBrush, bodyCenterX, fiveHourTextTop, 6, 118);
@@ -645,16 +662,51 @@ namespace CodexUsageMonitorV2
             return logoMode == WidgetLogoMode.Animated && logicalWidgetSize == 256;
         }
 
+        private bool ShouldRunWidgetAnimation()
+        {
+            return ShouldDrawAnimatedLogo() && Visible;
+        }
+
+        private void ResetGraphAnimationCycle()
+        {
+            graphAnimationStartedAt = DateTime.UtcNow;
+        }
+
+        private int GetAnimatedGraphPercent(int target)
+        {
+            target = Clamp(target);
+            if (!ShouldDrawAnimatedLogo() || snapshot == null)
+            {
+                return target;
+            }
+
+            var cycle = GraphFillMilliseconds + GraphHoldMilliseconds;
+            var elapsed = (DateTime.UtcNow - graphAnimationStartedAt).TotalMilliseconds;
+            if (elapsed < 0)
+            {
+                elapsed = 0;
+            }
+            var cyclePosition = elapsed % cycle;
+            if (cyclePosition >= GraphFillMilliseconds)
+            {
+                return target;
+            }
+
+            var progress = cyclePosition / GraphFillMilliseconds;
+            return Clamp((int)Math.Round(target * progress));
+        }
+
         private void UpdateAnimationTimer()
         {
             if (animationTimer == null)
             {
                 return;
             }
-            if (Visible && ShouldDrawAnimatedLogo() && GetAnimatedLogoImage() != null)
+            if (ShouldRunWidgetAnimation() && GetAnimatedLogoImage() != null)
             {
                 if (!animationTimer.Enabled)
                 {
+                    ResetGraphAnimationCycle();
                     animationTimer.Start();
                 }
             }
@@ -913,6 +965,20 @@ namespace CodexUsageMonitorV2
             var x = Math.Max(workingArea.Left, Math.Min(point.X, workingArea.Right - size.Width));
             var y = Math.Max(workingArea.Top, Math.Min(point.Y, workingArea.Bottom - size.Height));
             return new Point(x, y);
+        }
+    }
+
+    internal sealed class BufferedWidgetPanel : Panel
+    {
+        public BufferedWidgetPanel()
+        {
+            SetStyle(
+                ControlStyles.AllPaintingInWmPaint |
+                ControlStyles.UserPaint |
+                ControlStyles.OptimizedDoubleBuffer |
+                ControlStyles.ResizeRedraw,
+                true);
+            UpdateStyles();
         }
     }
 }
