@@ -1,6 +1,7 @@
 using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
 using System.Globalization;
 using System.IO;
 using System.Text.RegularExpressions;
@@ -16,11 +17,16 @@ namespace CodexUsageMonitorV2
         private UsageSnapshot snapshot;
         private int logicalWidgetSize = 128;
         private WidgetGraphStyle graphStyle = WidgetGraphStyle.Rings;
+        private WidgetLogoMode logoMode = WidgetLogoMode.Static;
+        private readonly Timer animationTimer;
         private bool dragging;
         private Point dragStart;
         private static bool codexIconLoadAttempted;
         private static Bitmap codexIconBitmap;
         private static Rectangle codexIconVisibleBounds;
+        private static bool animatedLogoLoadAttempted;
+        private static Image animatedLogoImage;
+        private static MemoryStream animatedLogoStream;
 
         public event EventHandler WidgetClosedByUser;
         public event EventHandler WidgetMovedOrSized;
@@ -56,6 +62,20 @@ namespace CodexUsageMonitorV2
             panel.MouseClick += HandleMouseClick;
             panel.MouseDoubleClick += HandleMouseDoubleClick;
             Controls.Add(panel);
+
+            animationTimer = new Timer { Interval = 80 };
+            animationTimer.Tick += (sender, args) =>
+            {
+                if (ShouldDrawAnimatedLogo())
+                {
+                    var image = GetAnimatedLogoImage();
+                    if (image != null)
+                    {
+                        ImageAnimator.UpdateFrames(image);
+                        panel.Invalidate();
+                    }
+                }
+            };
         }
 
         public void SetSnapshot(UsageSnapshot value)
@@ -76,12 +96,20 @@ namespace CodexUsageMonitorV2
         {
             logicalWidgetSize = size == 256 ? 256 : 128;
             ClientSize = new Size(logicalWidgetSize, logicalWidgetSize);
+            UpdateAnimationTimer();
             panel.Invalidate();
         }
 
         public void ApplyGraphStyle(WidgetGraphStyle style)
         {
             graphStyle = style;
+            panel.Invalidate();
+        }
+
+        public void ApplyLogoMode(WidgetLogoMode mode)
+        {
+            logoMode = mode;
+            UpdateAnimationTimer();
             panel.Invalidate();
         }
 
@@ -109,6 +137,21 @@ namespace CodexUsageMonitorV2
                 return;
             }
             base.OnFormClosing(e);
+        }
+
+        protected override void OnVisibleChanged(EventArgs e)
+        {
+            base.OnVisibleChanged(e);
+            UpdateAnimationTimer();
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                animationTimer.Dispose();
+            }
+            base.Dispose(disposing);
         }
 
         private void PaintWidget(object sender, PaintEventArgs e)
@@ -556,6 +599,30 @@ namespace CodexUsageMonitorV2
 
         private void DrawCodexMark(Graphics g, float centerX, float centerY, float iconSize)
         {
+            if (ShouldDrawAnimatedLogo())
+            {
+                var animated = GetAnimatedLogoImage();
+                if (animated != null)
+                {
+                    ImageAnimator.UpdateFrames(animated);
+                    var rect = new RectangleF(centerX - iconSize / 2f, centerY - iconSize / 2f, iconSize, iconSize);
+                    using (var attributes = new ImageAttributes())
+                    {
+                        attributes.SetColorKey(Color.FromArgb(248, 248, 248), Color.White);
+                        g.DrawImage(
+                            animated,
+                            Rectangle.Round(rect),
+                            0,
+                            0,
+                            animated.Width,
+                            animated.Height,
+                            GraphicsUnit.Pixel,
+                            attributes);
+                    }
+                    return;
+                }
+            }
+
             var iconBitmap = GetCodexIconBitmap();
             if (iconBitmap != null)
             {
@@ -571,6 +638,75 @@ namespace CodexUsageMonitorV2
                 var size = g.MeasureString(text, font);
                 g.DrawString(text, font, brush, centerX - size.Width / 2f, centerY - size.Height / 2f);
             }
+        }
+
+        private bool ShouldDrawAnimatedLogo()
+        {
+            return logoMode == WidgetLogoMode.Animated && logicalWidgetSize == 256;
+        }
+
+        private void UpdateAnimationTimer()
+        {
+            if (animationTimer == null)
+            {
+                return;
+            }
+            if (Visible && ShouldDrawAnimatedLogo() && GetAnimatedLogoImage() != null)
+            {
+                if (!animationTimer.Enabled)
+                {
+                    animationTimer.Start();
+                }
+            }
+            else if (animationTimer.Enabled)
+            {
+                animationTimer.Stop();
+            }
+        }
+
+        private static Image GetAnimatedLogoImage()
+        {
+            if (animatedLogoLoadAttempted)
+            {
+                return animatedLogoImage;
+            }
+            animatedLogoLoadAttempted = true;
+
+            try
+            {
+                using (var stream = typeof(WidgetForm).Assembly.GetManifestResourceStream("CodexUsageMonitorV2.codex-animated-logo.gif"))
+                {
+                    if (stream == null)
+                    {
+                        AppLogger.Write("Animated widget logo resource was not found.");
+                        return null;
+                    }
+
+                    animatedLogoStream = new MemoryStream();
+                    stream.CopyTo(animatedLogoStream);
+                    animatedLogoStream.Position = 0;
+                    animatedLogoImage = Image.FromStream(animatedLogoStream);
+                    if (ImageAnimator.CanAnimate(animatedLogoImage))
+                    {
+                        ImageAnimator.Animate(animatedLogoImage, (sender, args) => { });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Write("Animated widget logo could not be loaded: " + ex.Message);
+                if (animatedLogoImage != null)
+                {
+                    animatedLogoImage.Dispose();
+                    animatedLogoImage = null;
+                }
+                if (animatedLogoStream != null)
+                {
+                    animatedLogoStream.Dispose();
+                    animatedLogoStream = null;
+                }
+            }
+            return animatedLogoImage;
         }
 
         private static Bitmap GetCodexIconBitmap()

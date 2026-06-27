@@ -31,6 +31,9 @@
     <EmbeddedResource Include="app.ico">
       <LogicalName>CodexUsageMonitorV2.app.ico</LogicalName>
     </EmbeddedResource>
+    <EmbeddedResource Include="codex-animated-logo.gif">
+      <LogicalName>CodexUsageMonitorV2.codex-animated-logo.gif</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
 
   <Target Name="PrepareDeployment" AfterTargets="Build">

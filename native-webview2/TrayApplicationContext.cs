@@ -20,6 +20,8 @@ namespace CodexUsageMonitorV2
             new Dictionary<string, ToolStripMenuItem>(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<WidgetGraphStyle, ToolStripMenuItem> graphStyleItems =
             new Dictionary<WidgetGraphStyle, ToolStripMenuItem>();
+        private readonly Dictionary<WidgetLogoMode, ToolStripMenuItem> logoModeItems =
+            new Dictionary<WidgetLogoMode, ToolStripMenuItem>();
         private readonly AppSettings settings;
         private readonly ThemePalette palette;
         private readonly ContextMenuStrip menu;
@@ -34,6 +36,7 @@ namespace CodexUsageMonitorV2
         private bool exiting;
         private bool disposed;
         private WidgetGraphStyle currentGraphStyle;
+        private WidgetLogoMode currentLogoMode;
         private string currentFiveHourAlertKey;
         private string currentWeeklyAlertKey;
         private string lastNotifiedFiveHourAlertKey;
@@ -48,6 +51,7 @@ namespace CodexUsageMonitorV2
             settings = AppSettingsStore.Load();
             palette = new ThemePalette(settings.colors);
             currentGraphStyle = WidgetGraphStyleHelper.Normalize(settings.graphStyle);
+            currentLogoMode = WidgetLogoModeHelper.Normalize(settings.logoMode);
             appIcon = AppIcon.Create();
             browserForm = new BrowserForm();
             browserForm.UsageUpdated += HandleUsageUpdated;
@@ -59,6 +63,7 @@ namespace CodexUsageMonitorV2
             menu.Items.Add(CreateAutoRefreshMenu());
             menu.Items.Add(CreateColorsMenu());
             menu.Items.Add(CreateGraphStyleMenu());
+            menu.Items.Add(CreateLogoModeMenu());
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add("Show widget", null, (sender, args) => ShowWidget(true));
             acknowledgeAlertMenuItem = new ToolStripMenuItem("Acknowledge current alert");
@@ -87,6 +92,7 @@ namespace CodexUsageMonitorV2
             ReloadSavedData(false);
             ApplyAutoRefresh(settings.autoRefreshMinutes, false, false);
             ApplyGraphStyle(currentGraphStyle, false, false);
+            ApplyLogoMode(currentLogoMode, false, false);
             if (settings.widgetVisible == true)
             {
                 ShowWidget(false);
@@ -340,6 +346,22 @@ namespace CodexUsageMonitorV2
             return parent;
         }
 
+        private ToolStripMenuItem CreateLogoModeMenu()
+        {
+            var parent = new ToolStripMenuItem("Center logo");
+            AddLogoModeItem(parent, WidgetLogoMode.Static, "Static icon");
+            AddLogoModeItem(parent, WidgetLogoMode.Animated, "Animated GIF (256 only)");
+            return parent;
+        }
+
+        private void AddLogoModeItem(ToolStripMenuItem parent, WidgetLogoMode mode, string text)
+        {
+            var item = new ToolStripMenuItem(text);
+            item.Click += (sender, args) => ApplyLogoMode(mode, true, true);
+            logoModeItems.Add(mode, item);
+            parent.DropDownItems.Add(item);
+        }
+
         private void AddGraphStyleItem(ToolStripMenuItem parent, WidgetGraphStyle style)
         {
             var item = new ToolStripMenuItem(style.ToString());
@@ -381,6 +403,45 @@ namespace CodexUsageMonitorV2
             foreach (var pair in graphStyleItems)
             {
                 pair.Value.Checked = pair.Key == currentGraphStyle;
+            }
+        }
+
+        private void ApplyLogoMode(WidgetLogoMode mode, bool save, bool notify)
+        {
+            var previous = currentLogoMode;
+            currentLogoMode = mode;
+            RefreshLogoModeChecks();
+            if (save)
+            {
+                try
+                {
+                    SaveSettings();
+                }
+                catch (Exception ex)
+                {
+                    currentLogoMode = previous;
+                    RefreshLogoModeChecks();
+                    AppLogger.Write("Widget logo mode setting could not be saved: " + ex.Message);
+                    notifyIcon.ShowBalloonTip(4000, AppInfo.Name, "Logo mode could not be saved. See the log.", ToolTipIcon.Error);
+                    return;
+                }
+            }
+
+            UpdateWidget();
+            if (notify)
+            {
+                var message = mode == WidgetLogoMode.Animated
+                    ? "Widget center logo uses the animated GIF on 256x256 widgets."
+                    : "Widget center logo uses the static icon.";
+                notifyIcon.ShowBalloonTip(2500, AppInfo.Name, message, ToolTipIcon.Info);
+            }
+        }
+
+        private void RefreshLogoModeChecks()
+        {
+            foreach (var pair in logoModeItems)
+            {
+                pair.Value.Checked = pair.Key == currentLogoMode;
             }
         }
 
@@ -461,6 +522,7 @@ namespace CodexUsageMonitorV2
             settings.autoRefreshMinutes = autoRefreshMinutes;
             settings.colors = palette.ToDictionary();
             settings.graphStyle = WidgetGraphStyleHelper.ToSettingValue(currentGraphStyle);
+            settings.logoMode = WidgetLogoModeHelper.ToSettingValue(currentLogoMode);
             AppSettingsStore.Save(settings);
         }
 
@@ -911,6 +973,7 @@ namespace CodexUsageMonitorV2
             widgetForm.ApplyTheme();
             widgetForm.ApplySize(settings.widgetSize ?? 128);
             widgetForm.ApplyGraphStyle(currentGraphStyle);
+            widgetForm.ApplyLogoMode(currentLogoMode);
             widgetForm.ApplyLocationOrDefault(settings.widgetX, settings.widgetY);
             widgetForm.SetSnapshot(lastSnapshot);
             widgetForm.Show();
@@ -956,6 +1019,7 @@ namespace CodexUsageMonitorV2
             }
             widgetForm.ApplyTheme();
             widgetForm.ApplyGraphStyle(currentGraphStyle);
+            widgetForm.ApplyLogoMode(currentLogoMode);
             widgetForm.SetSnapshot(lastSnapshot);
         }
 
