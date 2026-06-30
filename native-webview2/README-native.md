@@ -1,226 +1,169 @@
-# Codex Usage Monitor V2 - WebView2 native preview
+# Codex Usage Monitor V2 - WebView2 네이티브 Preview
 
-This folder contains a release-candidate preview of a small native Windows version. It supports tray-based manual collection and opt-in automatic refresh, but it does not replace the established v1 Full/Lite distributions. V1 source, releases, tags, and release workflow remain independent.
+[English document](README-native.en.md)
 
-## Preview status
+이 폴더는 Python, Playwright, Chromium 동봉 없이 Microsoft Edge WebView2 Runtime을 사용하는 Windows 네이티브 Preview 앱입니다. 기존 v1 Full/Lite 배포본을 즉시 대체하는 안정판은 아니며, v1 소스, Release, 태그, workflow와 독립적으로 유지됩니다.
 
-The `v2.0.0-preview.7` preview has been verified with a real visible ChatGPT login, persistent WebView2 session, authenticated usage-page parsing, general Codex reset/credits parsing, opt-in automatic refresh, tray menu operation, color settings, dynamic tray icon rendering, Rings/Bars/Meters/Battery widget styles, cache cleanup, stable exit, and a clean GitHub Actions artifact. It is still labeled **preview** because it has no installer, startup registration, code signing, or broad multi-machine compatibility testing.
+## 현재 상태
 
-## Design decision
+- 최신 공개 v2 Release: [v2.0.0-preview.7](https://github.com/saveway/codex-usage-monitor/releases/tag/v2.0.0-preview.7)
+- 현재 `main`에는 preview.7 이후 수정도 포함되어 있습니다.
+- preview.7 이후 `main`에 추가된 내용: 256x256 위젯의 animated GIF 센터 로고 선택, animated 모드에서 그래프 채움 애니메이션, Windows balloon 알림 On/Off 메뉴, 기본 알림 Off 정책.
+- 새 Release가 만들어지기 전까지 GitHub Release ZIP에는 preview.7 기준 기능만 포함됩니다. 최신 main 기능은 소스 빌드 또는 다음 v2 preview Release에서 사용할 수 있습니다.
 
-- UI: C# WinForms on .NET Framework 4.8 (`net48`, x64).
-- Browser: Microsoft Edge WebView2 Evergreen Runtime through `Microsoft.Web.WebView2` 1.0.4022.49.
-- Build: .NET SDK 8.0.422 plus `Microsoft.NETFramework.ReferenceAssemblies` 1.0.3, so the .NET Framework 4.8 targeting pack does not have to be installed separately on the build machine.
-- Deployment: framework-dependent EXE and the WebView2 managed/native loader DLLs. Chromium is not bundled.
-- State: `%LOCALAPPDATA%\CodexUsageMonitorV2` only. No developer server or telemetry is used.
+## 설계 판단
 
-Using .NET Framework 4.8 is practical for this prototype and keeps the app binaries small. The target PC must have .NET Framework 4.8 and the Microsoft Edge WebView2 Runtime. Windows 10/11 commonly has WebView2 already, but the app checks at runtime and offers the official Microsoft download page if it is missing.
+- UI: C# WinForms, .NET Framework 4.8 (`net48`, x64)
+- 브라우저: Microsoft Edge WebView2 Evergreen Runtime
+- 빌드: .NET SDK 8.x 및 NuGet 패키지
+- 배포: framework-dependent EXE, WebView2 managed/native loader DLL, README, LICENSE
+- 브라우저 엔진: Chromium을 동봉하지 않고 Windows의 WebView2 Runtime 사용
+- 로컬 상태: `%LOCALAPPDATA%\CodexUsageMonitorV2`
+- 외부 서버/텔레메트리: 없음
 
-## Current features
+Windows 10/11에는 WebView2 Runtime이 이미 설치된 경우가 많지만, 없는 경우 앱은 사용자에게 Runtime 설치 안내를 표시합니다.
 
-- A self-designed teal gauge icon is embedded in the EXE and used by the tray and app windows. It does not use an OpenAI, ChatGPT, or Codex logo or trademark artwork.
-- This document describes the `v2.0.0-preview.7` prerelease. About and window UI read the assembly informational version generated from the project-level `PreviewVersion`, so the UI and ProductVersion use the same preview version. Windows FileVersion uses the corresponding numeric value `2.0.0.7`.
-- Notification-area icon with `Open/Login usage page`, `Fetch now`, `Reload saved data`, `Open data file`, `Open log`, `Clear WebView2 cache`, `Show widget`, and `Exit`.
-- A `Colors` menu exposes 21 configurable palette entries, including six five-hour stages, six weekly stages, and nine interface colors. `Reset all colors` restores the defaults.
-- The tray icon dynamically renders the current general Codex 5-hour and weekly remaining percentages with the configured staged colors.
-- A transparent, borderless, topmost widget can show the same general Codex 5-hour and weekly values with Rings, Bars, Meters, or Battery graph styles. Spark limits are parsed separately and are not mixed into the widget's `5h` and `W` display.
-- The widget supports drag movement, 128x128 and 256x256 double-click size switching, right-click menu access, saved visibility, saved position, saved size, and saved graph style in `codex-usage-settings.json`.
-- The `Center logo` menu lets the widget use either the static Codex executable icon or an embedded animated GIF. The animated GIF is shown only in the 256x256 widget; the 128x128 widget stays compact with the static icon. In animated mode, the widget graph fill repeatedly animates from 0% to the current remaining value and then pauses at the current value.
-- The `Balloon notifications` menu controls Windows tray balloon messages for usage updates and UI actions. It is Off by default; tooltip, widget, log, and saved JSON updates continue even when balloon notifications are Off.
-- The 128x128 widget keeps the display compact and omits the reset/credits helper line. The 256x256 widget shows the compact reset helper line and shows non-zero credits as `C<number>`.
-- Double-clicking the notification-area icon shows or activates the widget. `Open/Login usage page` remains available from the tray or widget right-click menu.
-- An `Auto refresh` submenu offers `Off`, `10 minutes`, `15 minutes`, `30 minutes`, and `60 minutes`. It is Off by default and never offers an interval shorter than 10 minutes.
-- An `About` menu opens app name, preview version, unofficial status, dependency summary, local data location, and GitHub repository information.
-- The tray tooltip shows the last saved general Codex 5-hour percentage, weekly percentage, compact reset time, credits, auto-refresh mode, and next scheduled time. It uses a compact format such as `Codex V2|5h97 W96|R06-23 00:52/06-29 14:52|C0|Aoff` to remain within the Windows tooltip limit.
-- A visible WebView2 window opens `https://chatgpt.com/codex/cloud/settings/analytics#usage`.
-- Login happens only on the real ChatGPT/OpenAI page shown in WebView2.
-- The persistent WebView2 user-data folder is `%LOCALAPPDATA%\CodexUsageMonitorV2\webview2-profile`.
-- `Fetch now` reads `document.body.innerText` after navigation, parses the general Codex 5-hour and weekly remaining percentages, general Codex reset text, and remaining credits, keeps GPT-5.3-Codex-Spark limits in separate optional fields when present, and writes `codex-usage.json`.
-- Because the usage page is rendered as a single-page application, `Fetch now` waits up to 30 seconds for the usage labels instead of reading the body immediately after the navigation event.
-- The window status bar and tray notifications distinguish login required, page access failure, network failure, missing WebView2 Runtime, parse failure, and successful collection.
-- Missing or failed WebView2 Runtime initialization shows a user-facing install/update/repair message without exposing an exception stack. Detailed technical exceptions are written only to the local log.
-- A failed parse writes only `codex-usage-debug-status.txt`, containing allowlisted host/category and present/absent flags for expected labels. It never contains page excerpts, percentages, email addresses, cookies, or tokens.
-- Logs are written to `codex-usage-monitor-v2.log` and rotated at approximately 2 MB, retaining one `.1` backup.
-- Startup and exit remove selected cache-only directories under WebView2's `EBWebView` data root, including `Cache`, `Code Cache`, `GPUCache`, shader caches, service-worker cache storage, and Crashpad reports. Cookies, Local Storage, IndexedDB, and session storage are not selected for deletion.
-- `Clear WebView2 cache` invokes the same allowlisted cache cleanup manually and reports the removed file count and size. It does not select Cookies, Local Storage, IndexedDB, or Session Storage for deletion.
-- WebView2 is launched with small disk/media cache limits. These flags are for storage control, not automation concealment.
-- Exit uses one guarded cleanup path and disposes the browser form and notification icon inside exception-safe blocks. The app does not create PID or lock files.
+## 주요 기능
 
-## Build
+- 트레이 아이콘과 WinForms 위젯으로 Codex 사용량 표시
+- `Open/Login usage page`로 실제 ChatGPT/OpenAI 페이지를 WebView2 창에 표시
+- 사용자가 실제 로그인 페이지에서 직접 로그인
+- 동일한 로컬 WebView2 프로필로 로그인 세션 유지
+- `Fetch now`는 사용자가 만든 로컬 WebView2 세션으로 usage 페이지를 읽고 저장
+- 로그인 필요 상태에서는 자동 로그인 폼이나 토큰 처리를 하지 않고 사용자가 `Open/Login usage page`를 누르도록 안내
+- 일반 Codex 5시간/주간 한도와 GPT-5.3-Codex-Spark 한도를 분리 파싱
+- 툴팁과 위젯의 `5H`/`W`는 일반 Codex 한도 기준
+- 일반 Codex reset 시간과 credits 파싱
+- 0% 잔여량 zero alert 및 acknowledge 메뉴
+- 잔여율 단계별 색상과 21개 색상 사용자 설정
+- 동적 트레이 아이콘
+- 위젯 그래프 스타일: Rings, Bars, Meters, Battery
+- 위젯 드래그 이동, 128x128/256x256 크기 전환, 위치/크기/표시 여부 저장
+- `Center logo` 메뉴: 정적 Codex.exe 아이콘 또는 animated GIF 선택
+- animated GIF 로고는 256x256 위젯에서만 표시, 128x128은 compact 유지를 위해 정적 아이콘 사용
+- animated 모드에서는 그래프가 0%에서 현재 남은량까지 채워진 뒤 잠깐 멈추고 반복
+- `Balloon notifications` 메뉴: 사용량 갱신과 UI 동작 balloon 알림 On/Off
+- balloon 알림 기본값 Off. Off여도 툴팁, 위젯, 로그, JSON 저장은 계속 갱신
+- `Auto refresh` 메뉴: Off, 10분, 15분, 30분, 60분. 기본 Off, 10분보다 짧은 주기 없음
+- `Clear WebView2 cache`는 로그인 세션 후보(Cookies, Local Storage, IndexedDB, Session Storage)를 삭제하지 않고 캐시성 데이터만 정리
 
-Install the .NET 8 SDK or a newer compatible SDK, then run:
+## 실행 방법
+
+GitHub Release ZIP을 사용하는 경우:
+
+1. `CodexUsageMonitorV2-windows-webview2.zip`과 `.sha256` 파일을 내려받습니다.
+2. ZIP을 임시 폴더나 압축파일 내부에서 바로 실행하지 말고, 계속 사용할 영구 폴더에 압축 해제합니다.
+3. `CodexUsageMonitorV2.exe`를 실행합니다.
+4. 트레이 아이콘을 우클릭하고 `Open/Login usage page`를 선택해 실제 ChatGPT/OpenAI 페이지에서 로그인합니다.
+5. 로그인 후 `Fetch now`를 실행해 사용량을 읽습니다.
+
+소스에서 실행하는 경우:
 
 ```powershell
 cd native-webview2
 dotnet restore
 dotnet build -c Release
+.\bin\Release\net48\deploy\CodexUsageMonitorV2.exe
 ```
 
-The minimal deployment directory is generated at:
+배포 최소 파일은 `bin\Release\net48\deploy\`에 생성됩니다.
+
+## 메뉴
+
+- `Open/Login usage page`: 실제 usage/login 페이지를 표시합니다.
+- `Fetch now`: 표시 창을 열지 않고 현재 세션으로 사용량을 갱신합니다. 로그인 필요 시 자동으로 로그인 창을 열지 않습니다.
+- `Auto refresh`: 자동 조회 주기를 선택합니다.
+- `Colors`: 색상을 개별 선택하거나 기본값으로 복원합니다.
+- `Graph style`: Rings, Bars, Meters, Battery 중 위젯 그래프를 선택합니다.
+- `Center logo`: 정적 아이콘 또는 256x256 animated GIF 로고를 선택합니다.
+- `Balloon notifications`: Windows balloon 알림을 켜거나 끕니다. 기본값은 Off입니다.
+- `Show widget`: 위젯을 표시합니다.
+- `Acknowledge current alert`: 현재 0% 잔여량 경고를 확인 처리합니다.
+- `Reload saved data`: 웹페이지를 열지 않고 로컬 JSON만 다시 읽습니다.
+- `Open data file`: 로컬 사용량 JSON을 엽니다.
+- `Open log`: v2 로그를 엽니다.
+- `Clear WebView2 cache`: 로그인 저장소는 보존하고 캐시성 파일만 정리합니다.
+- `About`: 앱 이름, preview 버전, 비공식 도구 고지, 로컬 데이터 위치, 저장소 주소를 표시합니다.
+- `Exit`: 앱을 종료합니다.
+
+## 로컬 데이터와 개인정보
+
+v2는 다음 폴더에만 상태를 저장합니다.
 
 ```text
-bin\Release\net48\deploy\
+%LOCALAPPDATA%\CodexUsageMonitorV2
 ```
 
-The initial x64 Release build contains five files:
+주요 파일과 폴더:
 
-| File | Bytes |
-|---|---:|
-| `CodexUsageMonitorV2.exe` | 72,704 |
-| `CodexUsageMonitorV2.exe.config` | 174 |
-| `Microsoft.Web.WebView2.Core.dll` | 698,248 |
-| `Microsoft.Web.WebView2.WinForms.dll` | 38,792 |
-| `runtimes\win-x64\native\WebView2Loader.dll` | 163,208 |
-| **Total** | **973,126 (about 0.93 MiB)** |
+- `webview2-profile\`: WebView2 로그인 세션 프로필. 인증 쿠키가 포함될 수 있습니다.
+- `codex-usage.json`: 최근 파싱된 사용량 데이터
+- `codex-usage-settings.json`: 색상, 그래프 스타일, 위젯 위치/크기, 자동 조회, 알림 설정
+- `codex-usage-monitor-v2.log`: 앱 로그
+- `codex-usage-debug-status.txt`: 파싱 실패 시 제한된 진단 정보
 
-The normal build directory is slightly larger because NuGet also copies assemblies that this WinForms-only package does not need. Use the `deploy` directory for size evaluation.
+이 폴더는 개인 계정 데이터로 취급해야 합니다. GitHub, 메신저, 버그 리포트 등에 업로드하지 마십시오. 앱 종료 후 이 폴더를 삭제하면 v2 로컬 상태가 초기화되며 다음 실행 시 다시 로그인이 필요합니다.
 
-The committed `app.ico` contains six Windows icon sizes and is reproducible with `generate-app-icon.ps1`. The ICO is embedded in the EXE, so it is not an additional deployment file.
+## 보안 원칙
 
-## Run
+- ChatGPT 비밀번호를 앱 자체 UI로 입력받지 않습니다.
+- 로그인은 실제 OpenAI/ChatGPT 페이지에서 직접 수행합니다.
+- 쿠키, 토큰, 전체 페이지 원문, 계정 정보, 사용량 데이터를 개발자 서버로 전송하지 않습니다.
+- 텔레메트리가 없습니다.
+- 비공식 내부 API 토큰 호출을 하지 않습니다.
+- 자동화 탐지 우회 플래그, 쿠키 탈취, 외부 서버 중계, 숨김 로그인 폼을 사용하지 않습니다.
+- 파싱 실패 진단 파일에는 전체 페이지 텍스트나 실제 숫자를 저장하지 않습니다.
 
-Run `bin\Release\net48\deploy\CodexUsageMonitorV2.exe`. Right-click the tray icon and choose `Open/Login usage page`. Sign in directly on the visible ChatGPT/OpenAI page if requested. Choose `Fetch now` to read the usage page with the local WebView2 session in the background, save JSON, and refresh the tray tooltip.
+이 프로젝트는 OpenAI 공식 앱이 아닙니다. 웹페이지 파싱은 사이트 문구와 레이아웃 변경에 취약하며, 사용자는 관련 약관과 계정 정책을 직접 확인하고 준수해야 합니다.
 
-The remaining menu commands behave as follows:
+## v1과의 차이
 
-- `Reload saved data` reads only `%LOCALAPPDATA%\CodexUsageMonitorV2\codex-usage.json` and refreshes the tooltip. It does not create or navigate a WebView2 instance.
-- `Open data file` opens the saved JSON in Notepad when it exists.
-- `Open log` opens the local v2 log in Notepad.
-- `Clear WebView2 cache` removes only the allowlisted cache directories described above and preserves login-storage candidates.
-- `About` displays preview identity, version, WebView2 dependency, local data location, and the project repository.
-- `Exit` closes the WebView2 form, hides and disposes the notification icon, runs final cache cleanup, and exits without PID or lock files.
+| 항목 | v1 Stable | v2 WebView2 Preview |
+|---|---|---|
+| 기술 | Python, PowerShell, Playwright | C# WinForms, WebView2 |
+| 브라우저 | Full은 Chromium 동봉, Lite는 별도 설치 | Windows WebView2 Runtime 사용 |
+| 다운로드 크기 | Full은 수백 MB 가능 | 약 0.3 MB 수준의 ZIP |
+| 설치 난이도 | Full은 쉬움, Lite는 Python 필요 | WebView2 Runtime이 있으면 간단 |
+| 안정성 | 기존 안정 배포 | 아직 preview |
+| 위젯 | 성숙한 v1 기능 | 핵심 기능을 단계적으로 이식 중 |
 
-## Auto refresh
+v2가 동작하지 않거나 안정성이 더 중요하면 v1 Stable을 사용하십시오.
 
-Auto refresh is explicitly opt-in and defaults to `Off`. Open the tray menu, choose `Auto refresh`, and select `10 minutes`, `15 minutes`, `30 minutes`, or `60 minutes`. Selecting `Off` stops the active schedule. The selected value is stored locally in `%LOCALAPPDATA%\CodexUsageMonitorV2\codex-usage-settings.json` and restored on the next app start.
+## GitHub Actions와 Release
 
-When enabled, the tooltip includes the interval and next scheduled time. Automatic collection periodically loads the usage page with the local WebView2 session previously created by the user. Normal automatic loading does not use an off-screen window, automation-evasion flag, extracted cookie, token call, or external server. If the session has expired or authentication is required, the app shows the real WebView2 window and asks the user to sign in directly on the visible ChatGPT/OpenAI page. It never supplies its own login form.
+- v1 workflow는 `v1.*` 태그에만 반응합니다.
+- v2 workflow는 `v2.*-preview.*` 태그에만 반응합니다.
+- 수동 workflow 실행은 artifact만 만들 수 있습니다.
+- v2 preview 태그를 push하면 prerelease가 생성되고 `CodexUsageMonitorV2-windows-webview2.zip`과 `.sha256`이 첨부됩니다.
 
-Only the parsed 5-hour and weekly percentages and update metadata are saved on success. Login-required, network, parse, and Runtime failures are reported as distinct tray states (`login`, `net`, `parse`, and `rt`). Failure diagnostics retain only coarse boolean/category information; page text, email addresses, cookies, tokens, and account credentials are not stored.
+GitHub Actions artifact는 바깥 ZIP 안에 실제 배포 ZIP과 SHA256 파일이 들어 있을 수 있습니다.
 
-A single-operation guard prevents automatic refresh, `Fetch now`, and cache cleanup from running over one another. A manual fetch resets the next automatic schedule. Exit stops and disposes the timer before closing WebView2 and the tray icon.
+## 아직 지원하지 않는 것
 
-If WebView2 Runtime is missing, install the Evergreen Runtime from the official Microsoft WebView2 download page and restart the app:
+- 설치 프로그램
+- Windows 시작프로그램 자동 등록
+- 코드 서명
+- 정식 stable v2 Release
+- 다국어 UI
+- 인증 계정에 대한 완전 자동 E2E 테스트
 
-https://developer.microsoft.com/microsoft-edge/webview2/
+## 검증 상태
 
-## GitHub Actions artifact
+현재 개발 PC 기준으로 다음을 확인했습니다.
 
-The separate `Build native WebView2 prototype` workflow supports manual `workflow_dispatch` builds and `v2.*-preview.*` tag builds. It builds this project on `windows-latest`, audits both the clean staging directory and the finished ZIP, and uploads an artifact named `CodexUsageMonitor-windows-webview2`.
-
-Tag ownership is intentionally disjoint: the established v1 Full/Lite workflow accepts only `v1.*`, and this native preview workflow accepts only `v2.*-preview.*`. Both can still be run manually without creating a Release.
-
-GitHub wraps artifacts in a download container. After downloading and opening that outer artifact ZIP, use:
-
-```text
-CodexUsageMonitorV2-windows-webview2.zip
-CodexUsageMonitorV2-windows-webview2.zip.sha256
-```
-
-The inner distribution ZIP contains the five required runtime files plus README and LICENSE, and nothing else:
-
-```text
-CodexUsageMonitorV2.exe
-CodexUsageMonitorV2.exe.config
-Microsoft.Web.WebView2.Core.dll
-Microsoft.Web.WebView2.WinForms.dll
-README-native.md
-LICENSE
-runtimes\win-x64\native\WebView2Loader.dll
-```
-
-This preview is distributed as a portable ZIP, not an installer. Extract the entire inner ZIP to a permanent directory of your choice before running `CodexUsageMonitorV2.exe`. Do not run it directly inside the archive or from a temporary extraction directory: that location may disappear and prevent reliable relaunching, path persistence, or a future startup configuration. Do not move the EXE away from its DLLs and `runtimes` directory.
-
-The package does not include Edge/Chromium; the target PC must have Microsoft Edge WebView2 Evergreen Runtime. Manual workflow runs create an Actions artifact only. A matching `v2.*-preview.*` tag creates a GitHub prerelease and attaches the inner ZIP and SHA256 file; it does not alter v1 releases.
-
-The inner ZIP is approximately 0.3 MiB because it contains only the compressed application and WebView2 loader libraries. Microsoft Edge WebView2 Runtime provides the browser engine separately and is not bundled. Extracted files are approximately 0.9 MiB; the installed WebView2 Runtime and local user profile are separate from these package sizes.
-
-Verify the ZIP before extraction:
-
-```powershell
-(Get-FileHash .\CodexUsageMonitorV2-windows-webview2.zip -Algorithm SHA256).Hash.ToLowerInvariant()
-Get-Content .\CodexUsageMonitorV2-windows-webview2.zip.sha256
-```
-
-## Local data and privacy
-
-The prototype may create:
-
-```text
-%LOCALAPPDATA%\CodexUsageMonitorV2\
-  codex-usage.json
-  codex-usage-monitor-v2.log
-  codex-usage-monitor-v2.log.1
-  codex-usage-debug-status.txt
-  codex-usage-settings.json
-  webview2-profile\
-```
-
-The profile can contain authentication cookies needed to keep the user signed in. Treat the entire directory as private account data and never upload it with a bug report or source archive. Exit the app before deleting the directory. Deleting it resets all v2 local state and requires login again.
-
-## Security and privacy principles
-
-- The app never asks for or stores a ChatGPT password in its own UI.
-- Authentication is performed directly in the real OpenAI/ChatGPT page.
-- No cookies, page text, usage data, credentials, or tokens are sent to a developer server.
-- There is no telemetry and no unofficial internal API/token call.
-- There is no hidden/off-screen browser, automation-detection bypass, cookie extraction, or bundled Chromium.
-- Only the two parsed percentages and basic timestamp/source metadata are saved to JSON. Full page text is not persisted.
-- Failure diagnostics contain only boolean label-presence results and a coarse destination category. Full page text and numeric page content are never persisted.
-- Logs use coarse destinations such as `chatgpt.com/usage` or `authentication-provider`; detailed authentication URLs and actual percentage values are not logged.
-
-This is an unofficial personal prototype, not an OpenAI product. Page scraping is inherently fragile and users remain responsible for complying with applicable terms.
-
-## V1 comparison
-
-Advantages over v1:
-
-- No Python or Playwright installation.
-- No bundled Chromium, reducing the deployment payload from hundreds of megabytes to about 0.89 MiB for app files.
-- Login and collection share one visible, persistent WebView2 profile.
-- One process with no scraper PID/lock lifecycle.
-
-Trade-offs:
-
-- Requires .NET Framework 4.8 and Microsoft Edge WebView2 Runtime.
-- DOM text parsing can break when ChatGPT wording or layout changes.
-- This preview includes color settings, four widget graph styles, reset/credits parsing, and zero-alert acknowledgement.
-- `Fetch now` uses a hidden WebView2 fetch path. If login is required, it reports that state; it does not automatically show the login page. Use `Open/Login usage page` when a visible sign-in page is needed.
-
-### Distribution choices
-
-- **V1 Full:** includes Python-based collector dependencies and Playwright Chromium; largest download, but intended to run without separately installing Python or Playwright.
-- **V1 Lite:** contains the v1 scripts without Chromium; requires Python and a separate Playwright Chromium installation.
-- **V2 WebView2 prototype:** contains a small .NET Framework WinForms EXE and WebView2 loader libraries; requires the Windows WebView2 Runtime but does not require Python, Playwright, or bundled Chromium.
-
-V2 remains a preview. Manual workflow runs produce an Actions artifact, while matching `v2.*-preview.*` tags publish separate prereleases. It is not part of or a replacement for the tagged v1 Stable Releases.
-
-## Unsupported in this preview
-
-- Credits and reset-time parsing.
-- Installer, Windows startup registration, code signing, stable v2 Release publishing, and non-preview Release attachment.
-- Localization beyond the current English UI.
-- Automated end-to-end testing against an authenticated account; authenticated validation is currently an explicit manual test.
-- Resilience against future ChatGPT wording, localization, routing, or DOM changes beyond the current text parser.
-
-## Prototype verification status
-
-- Restore and Release build: successful with zero warnings and zero errors.
-- WebView2 Runtime detection on the development PC: successful (`149.0.4022.80`).
-- Visible WebView2 sign-in and navigation: successful. Authentication was completed by the user on the real provider and ChatGPT pages; the app did not receive credentials.
-- Session persistence: successful. A new process reused `%LOCALAPPDATA%\CodexUsageMonitorV2\webview2-profile` and reached the usage page without another sign-in.
-- Session persistence after cache cleanup: successful. Cache-only directories were removed before the successful authenticated fetch; authentication cookies and session-storage candidates remained intact.
-- Actual authenticated usage-page reading and parsing: successful. `document.body.innerText` contained both the 5-hour and weekly fields after SPA rendering completed. The real percentage values are intentionally not documented.
-- Example Korean usage-text parsing and JSON persistence: successful (75% 5-hour, 60% weekly). This fixture is not presented as real account data.
-- Cache cleanup against a real WebView2 profile: removed 231 cache files (32,188,683 measured bytes), reducing the test profile from about 33.5 MiB to about 2.82 MiB while leaving session-storage candidates untouched.
-- Guarded application-context exit after authenticated testing: successful with exit code 0. No related app process, PID file, or lock file remained, and the log file could be reopened with exclusive access.
-- Tray usability integration: all seven menu commands were present; the tooltip contained both percentages, update time, and status; saved-data reload did not initialize WebView2; cache cleanup removed an allowlisted test cache file; data/log commands opened their local files; visible fetch succeeded; and Exit completed without a cache deletion failure.
-- V1 tracked files: intentionally unchanged by this prototype.
-
-## Remaining risks after authenticated verification
-
-- The parser depends on visible ChatGPT wording. A UI copy or localization change can require regex updates.
-- The persistent session can expire or be revoked by ChatGPT/OpenAI, after which interactive sign-in is required again.
-- Enterprise authentication, CAPTCHA, passkeys, and additional verification screens can require user interaction and were not generalized.
-- WebView2 Runtime and network policy differences across Windows installations still need broader machine testing.
-- The local profile contains authentication material and must never be committed, uploaded, or shared.
+- Release 빌드 경고 0, 오류 0
+- WebView2 Runtime 감지
+- 실제 ChatGPT 로그인 페이지 표시
+- 로그인 세션 유지
+- 사용량 페이지 접근 및 파싱
+- 일반 Codex/Spark 한도 분리
+- reset/credits 파싱
+- Fetch now 숨김 갱신
+- 0% zero alert와 acknowledge
+- 4종 위젯 그래프
+- Codex.exe 아이콘 및 animated GIF 로고
+- animated 모드 그래프 채움 애니메이션
+- balloon 알림 기본 Off
+- 캐시 정리 후 세션 유지
+- Exit 후 잔여 프로세스 없음
+- v1 파일과 v1 Release 구조에 영향 없음

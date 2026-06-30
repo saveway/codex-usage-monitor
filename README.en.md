@@ -7,9 +7,11 @@
 - **For the lightest and easiest version to try first, use the [v2.0.0-preview.7 WebView2 Native Preview](https://github.com/saveway/codex-usage-monitor/releases/tag/v2.0.0-preview.7).** It is approximately 0.3 MB, bundles no Python, Playwright, or Chromium, and uses Microsoft Edge WebView2 Runtime. It is still a preview, so use v1 Stable if you encounter problems.
 - **For the established stable approach, or if v2 does not work, use [v1.0.1 Stable](https://github.com/saveway/codex-usage-monitor/releases/tag/v1.0.1).** v1 Full is large because it includes Chromium but requires no Python installation. v1 Lite is small but requires Python and Playwright.
 
-V2 does not yet replace v1 as the default stable distribution. See the [WebView2 native preview documentation](native-webview2/README-native.md) for execution, security, and limitation details.
+V2 does not yet replace v1 as the default stable distribution. See the [WebView2 native preview documentation](native-webview2/README-native.md) for execution, security, and limitation details. The [English v2 document](native-webview2/README-native.en.md) is stored separately.
 
-V2 Preview is a portable ZIP, not an installer. It includes Rings, Bars, Meters, and Battery widget graphs plus reset/credits display, but it still does not include an installer, startup registration, or code signing. Do not run it directly inside the archive or from a temporary directory. Extract the entire ZIP to a permanent directory of your choice, then run `CodexUsageMonitorV2.exe`. Running from a temporary location can break relaunching, path persistence, or a future startup configuration.
+V2 Preview is a portable ZIP, not an installer. It includes Rings, Bars, Meters, and Battery widget graphs, reset/credits display, zero alerts, color settings, auto refresh, and WebView2-based hidden fetch. Current `main` also includes post-preview.7 changes: a 256x256 animated GIF center logo, graph-fill animation, and a Balloon notifications On/Off menu. Until the next v2 Release is created, the GitHub Release ZIP provides the preview.7 feature set.
+
+Do not run it directly inside the archive or from a temporary directory. Extract the entire ZIP to a permanent directory of your choice, then run `CodexUsageMonitorV2.exe`. Running from a temporary location can break relaunching, path persistence, or a future startup configuration.
 
 Release tag ownership is separated: the v1 Full/Lite workflow responds only to `v1.*`, while the v2 preview workflow responds only to `v2.*-preview.*`. Both workflows retain manual dispatch support.
 
@@ -43,11 +45,17 @@ The `browser-profile/` may contain a live login session. Never upload or share t
 
 These public screenshots use example values and contain no real account data.
 
-### Rings Widget
+### V2 Rings Widget
 
-![Rings widget displaying example usage values](docs/images/widget-rings.png)
+![V2 Rings widget displaying example usage values and animated logo](docs/images/widget-rings.png)
 
-### Tray and Widget Context Menu
+### V2 Widget Graph Styles
+
+| Bars | Meters | Battery |
+|---|---|---|
+| ![Bars widget](docs/images/widget-bars.png) | ![Meters widget](docs/images/widget-meters.png) | ![Battery widget](docs/images/widget-battery.png) |
+
+### V2 Tray and Widget Context Menu
 
 ![Context menu shared by the tray icon and widget](docs/images/tray-menu.png)
 
@@ -55,14 +63,20 @@ These public screenshots use example values and contain no real account data.
 
 ![Graph style menu with Rings, Bars, Meters, and Battery](docs/images/graph-style-menu.png)
 
-## Requirements
+### Center Logo and Notifications
+
+| Center logo | Balloon notifications |
+|---|---|
+| ![Menu for choosing the static icon or 256-only animated GIF](docs/images/center-logo-menu.png) | ![Windows balloon notification toggle menu](docs/images/balloon-notifications-menu.png) |
+
+## V1 Stable Requirements
 
 - Windows 10 or Windows 11
 - Python 3.11 or newer available on `PATH`
 - Windows PowerShell 5.1
 - Playwright Chromium
 
-## Run the Windows Package from GitHub Releases
+## Run the V1 Stable Windows Package from GitHub Releases
 
 Download either the Full or Lite package and its matching SHA256 file from the [v1.0.1 Stable Release](https://github.com/saveway/codex-usage-monitor/releases/tag/v1.0.1). For the smaller v2 preview, see [Recommended Choice](#recommended-choice) above.
 
@@ -109,7 +123,7 @@ Manually dispatched Actions builds provide separate `CodexUsageMonitor-windows-f
 
 TODO: On Windows systems with Microsoft Edge installed, Playwright `channel="msedge"` could support a simpler Edge-based package without bundling Chromium. This requires thorough validation of the installed Edge/Playwright version combination, visible and headless operation, and persistent profile behavior before it can become a separate distribution option.
 
-## Run from Source
+## Run V1 Stable from Source
 
 Run the following commands in the project directory:
 
@@ -136,7 +150,7 @@ To remove only the automatic startup entry:
 powershell -ExecutionPolicy Bypass -File .\uninstall-startup.ps1
 ```
 
-## How to Use
+## How to Use V1 Stable
 
 ### 1. First Run and Login
 
@@ -217,7 +231,7 @@ If the tray icon does not appear after launch, run `debug-codex-usage-tray.bat` 
 
 Deleting the final directory also removes authentication cookies from the local `browser-profile`.
 
-## Local Data
+## V1 Stable Local Data
 
 All mutable data is stored outside the source repository at:
 
@@ -239,7 +253,7 @@ The `%LOCALAPPDATA%\CodexUsageMonitor` directory can grow because `browser-profi
 
 For a complete reset, select `Exit` from the tray or widget menu and then delete the entire `%LOCALAPPDATA%\CodexUsageMonitor` directory. This removes usage data, settings, logs, and the saved login session, so you must sign in to ChatGPT again on the next run.
 
-## Debug Capture
+## V1 Stable Debug Capture
 
 Full-page text capture is disabled by default. Enable it explicitly only when local debugging is necessary:
 
