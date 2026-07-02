@@ -6,7 +6,7 @@ namespace CodexUsageMonitorV2
     internal static class VirtualDesktopPinning
     {
         private static readonly Guid ImmersiveShellClsid =
-            new Guid("C2F03A33-21F5-47FA-B4BB-156362A2F239A");
+            new Guid("C2F03A33-21F5-47FA-B4BB-156362A2F239");
         private static readonly Guid ApplicationViewCollectionIid =
             new Guid("1841C6D7-4F9D-42C0-AF41-8747538F10E5");
         private static readonly Guid VirtualDesktopPinnedAppsClsid =
