@@ -30,6 +30,7 @@ namespace CodexUsageMonitorV2
         private static bool animatedLogoLoadAttempted;
         private static Image animatedLogoImage;
         private static MemoryStream animatedLogoStream;
+        private bool virtualDesktopPinAttempted;
 
         public event EventHandler WidgetClosedByUser;
         public event EventHandler WidgetMovedOrSized;
@@ -154,6 +155,12 @@ namespace CodexUsageMonitorV2
             UpdateAnimationTimer();
         }
 
+        protected override void OnShown(EventArgs e)
+        {
+            base.OnShown(e);
+            TryPinToAllVirtualDesktopsOnce();
+        }
+
         protected override void Dispose(bool disposing)
         {
             if (disposing)
@@ -161,6 +168,25 @@ namespace CodexUsageMonitorV2
                 animationTimer.Dispose();
             }
             base.Dispose(disposing);
+        }
+
+        private void TryPinToAllVirtualDesktopsOnce()
+        {
+            if (virtualDesktopPinAttempted)
+            {
+                return;
+            }
+
+            virtualDesktopPinAttempted = true;
+            string message;
+            if (VirtualDesktopPinning.TryPinWindowToAllDesktops(Handle, out message))
+            {
+                AppLogger.Write(message);
+            }
+            else
+            {
+                AppLogger.Write("Widget virtual desktop pinning skipped or failed: " + message);
+            }
         }
 
         private void PaintWidget(object sender, PaintEventArgs e)
